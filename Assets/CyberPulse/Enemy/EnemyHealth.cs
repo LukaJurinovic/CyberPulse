@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using CyberPulse.Combat;
+using CyberPulse.Systems;
 
 namespace CyberPulse.Enemy
 {
@@ -23,7 +24,15 @@ namespace CyberPulse.Enemy
         /// <summary>Fires each time damage is applied; parameter is the damage amount.</summary>
         public event Action<int> OnDamageTaken;
 
-        private void Awake() => _currentHealth = _maxHealth;
+        private void Awake()
+        {
+            _currentHealth = _maxHealth;
+        }
+
+        private void Start()
+        {
+            TraceMeter.RegisterEnemy(this);
+        }
 
         /// <summary>Subtract amount from health. Fires OnDamageTaken, then OnDeath if health reaches zero.</summary>
         public void TakeDamage(int amount)

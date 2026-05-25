@@ -3,8 +3,10 @@ using UnityEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine.Rendering;
+using CyberPulse.Enemy;
 using CyberPulse.Input;
 using CyberPulse.Player;
+using CyberPulse.Systems;
 using CyberPulse.UI;
 using CyberPulse.Weapons;
 
@@ -61,6 +63,7 @@ namespace CyberPulse.Editor
             BuildLighting();
             var player = BuildPlayer(inputReader, groundMask);
             BuildDebugUI(player);
+            BuildSystems();
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AssetDatabase.Refresh();
@@ -235,6 +238,7 @@ namespace CyberPulse.Editor
             var controller = player.AddComponent<PlayerController>();
             var dash       = player.AddComponent<DashAbility>();
             player.AddComponent<PlayerStats>();
+            player.AddComponent<PlayerDeathHandler>();
 
             // ── CameraPivot ───────────────────────────────────────────────────
             var pivotGO = new GameObject("CameraPivot");
@@ -337,6 +341,46 @@ namespace CyberPulse.Editor
         }
 
         // ──────────────────────────────────────────────────────────────────────
+        // Game systems
+        // ──────────────────────────────────────────────────────────────────────
+
+        private static void BuildSystems()
+        {
+            var go = new GameObject("GameSystems");
+            go.AddComponent<GameManager>();
+            go.AddComponent<TraceMeter>();
+
+            // Spawn points — four corners of the play area.
+            var spawnRoot = new GameObject("SpawnPoints");
+            Vector3[] spawnPositions = {
+                new Vector3( 8f, 1f,  8f),
+                new Vector3(-8f, 1f,  8f),
+                new Vector3( 8f, 1f, -8f),
+                new Vector3(-8f, 1f, -8f),
+            };
+            var spawnTransforms = new Transform[spawnPositions.Length];
+            for (int i = 0; i < spawnPositions.Length; i++)
+            {
+                var pt = new GameObject($"SpawnPoint_{i + 1}");
+                pt.transform.SetParent(spawnRoot.transform, false);
+                pt.transform.position = spawnPositions[i];
+                spawnTransforms[i] = pt.transform;
+            }
+
+            var spawner = go.AddComponent<EnemySpawner>();
+            // _autoStart on so the spawner works immediately for testing
+            // (replace with GameManager.Purge phase trigger once data nodes are in).
+            LinkComponent(spawner, so =>
+            {
+                so.FindProperty("_autoStart").boolValue = true;
+                var pts = so.FindProperty("_spawnPoints");
+                pts.arraySize = spawnTransforms.Length;
+                for (int i = 0; i < spawnTransforms.Length; i++)
+                    pts.GetArrayElementAtIndex(i).objectReferenceValue = spawnTransforms[i];
+            });
+        }
+
+        // ──────────────────────────────────────────────────────────────────────
         // Debug UI object
         // ──────────────────────────────────────────────────────────────────────
 
@@ -345,18 +389,20 @@ namespace CyberPulse.Editor
             var go        = new GameObject("DebugUI");
             var ui        = go.AddComponent<MovementDebugUI>();
             var crosshair = go.AddComponent<CrosshairUI>();
+            var hud       = go.AddComponent<GameHUD>();
 
             LinkComponent(ui, so =>
             {
                 so.FindProperty("_controller").objectReferenceValue = player.GetComponent<PlayerController>();
                 so.FindProperty("_dash").objectReferenceValue       = player.GetComponent<DashAbility>();
             });
-
             LinkComponent(crosshair, so =>
             {
                 so.FindProperty("_controller").objectReferenceValue   = player.GetComponent<PlayerController>();
                 so.FindProperty("_weaponHolder").objectReferenceValue = player.GetComponent<WeaponHolder>();
             });
+            LinkComponent(hud, so =>
+                so.FindProperty("_playerStats").objectReferenceValue = player.GetComponent<PlayerStats>());
         }
 
         // ──────────────────────────────────────────────────────────────────────

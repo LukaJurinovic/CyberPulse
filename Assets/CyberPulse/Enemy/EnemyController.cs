@@ -90,8 +90,9 @@ namespace CyberPulse.Enemy
 
         private void UpdatePatrol()
         {
+            if (!_agent.isOnNavMesh) return;
             if (_agent.pathPending) return;
-            if (!_agent.hasPath) return; // path failed (no NavMesh) — don't false-advance
+            if (!_agent.hasPath) return;
             if (_agent.remainingDistance > _agent.stoppingDistance) return;
 
             _patrolIndex = (_patrolIndex + 1) % _patrolPoints.Length;
@@ -108,7 +109,7 @@ namespace CyberPulse.Enemy
                 _agent.ResetPath();
                 SetState(State.Attack);
             }
-            else
+            else if (_agent.isOnNavMesh)
             {
                 _agent.SetDestination(_target.position);
             }
@@ -141,7 +142,7 @@ namespace CyberPulse.Enemy
 
         private void BeginPatrol()
         {
-            if (_patrolPoints == null || _patrolPoints.Length == 0)
+            if (_patrolPoints == null || _patrolPoints.Length == 0 || !_agent.isOnNavMesh)
             {
                 _waitTimer = _patrolWaitTime;
                 SetState(State.Idle);

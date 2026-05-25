@@ -4,11 +4,13 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEditor.AI;
 using UnityEngine.Rendering;
+using CyberPulse.Enemy;
 using CyberPulse.Input;
 using CyberPulse.Player;
+using CyberPulse.Systems;
 using CyberPulse.UI;
 using CyberPulse.Weapons;
-using CyberPulse.Enemy;
+using CyberPulse.World;
 
 namespace CyberPulse.Editor
 {
@@ -71,7 +73,10 @@ namespace CyberPulse.Editor
 
             var player = BuildPlayer(inputReader, groundMask, playerIdx);
             BuildDebugUI(player);
+            BuildDataNodes();
             BuildEnemies(groundMask, playerMask, groundIdx);
+            BuildExitZone(playerMask);
+            BuildSystems();
 
             // Save before baking — Unity writes NavMesh.asset relative to the scene path.
             // Without a saved path the bake produces nothing and agents stand still.
@@ -260,6 +265,7 @@ namespace CyberPulse.Editor
             var controller = player.AddComponent<PlayerController>();
             var dash       = player.AddComponent<DashAbility>();
             player.AddComponent<PlayerStats>();
+            player.AddComponent<PlayerDeathHandler>();
 
             // CameraPivot at eye height
             var pivotGO = new GameObject("CameraPivot");
@@ -360,8 +366,9 @@ namespace CyberPulse.Editor
         private static void BuildDebugUI(GameObject player)
         {
             var go = new GameObject("DebugUI");
-            var ui = go.AddComponent<MovementDebugUI>();
+            var ui        = go.AddComponent<MovementDebugUI>();
             var crosshair = go.AddComponent<CrosshairUI>();
+            var hud       = go.AddComponent<GameHUD>();
 
             LinkComponent(ui, so =>
             {
@@ -373,6 +380,8 @@ namespace CyberPulse.Editor
                 so.FindProperty("_controller").objectReferenceValue   = player.GetComponent<PlayerController>();
                 so.FindProperty("_weaponHolder").objectReferenceValue = player.GetComponent<WeaponHolder>();
             });
+            LinkComponent(hud, so =>
+                so.FindProperty("_playerStats").objectReferenceValue = player.GetComponent<PlayerStats>());
         }
 
         // ──────────────────────────────────────────────────────────────────────
@@ -497,6 +506,172 @@ namespace CyberPulse.Editor
                 for (int i = 0; i < patrolTransforms.Length; i++)
                     pts.GetArrayElementAtIndex(i).objectReferenceValue = patrolTransforms[i];
             });
+        }
+
+        // ──────────────────────────────────────────────────────────────────────
+        // Game systems
+        // ──────────────────────────────────────────────────────────────────────
+
+        private static void BuildSystems()
+        {
+            var go = new GameObject("GameSystems");
+            go.AddComponent<GameManager>();
+            go.AddComponent<TraceMeter>();
+            go.AddComponent<DataNodeManager>();
+            go.AddComponent<PhaseVisuals>();
+        }
+
+        // ──────────────────────────────────────────────────────────────────────
+        // Exit zone — north end of arena, active only during Extract phase
+        // ──────────────────────────────────────────────────────────────────────
+
+        private static void BuildExitZone(int playerMask)
+        {
+            var go = new GameObject("ExitZone");
+            go.transform.position = new Vector3(0f, 1.5f, 26f);
+
+            // Visual marker — flat emissive plane so player can see the goal
+            var visual = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            visual.name = "ExitMarker";
+            visual.transform.SetParent(go.transform, false);
+            visual.transform.localScale    = new Vector3(6f, 3f, 0.2f);
+            visual.transform.localPosition = Vector3.zero;
+            UnityEngine.Object.DestroyImmediate(visual.GetComponent<BoxCollider>());
+
+            var mat = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
+            mat.SetColor("_BaseColor",     new Color(0f, 0.8f, 0.2f, 1f));
+            mat.SetColor("_EmissionColor", new Color(0f, 2f,   0.4f, 1f));
+            mat.EnableKeyword("_EMISSION");
+            visual.GetComponent<MeshRenderer>().sharedMaterial = mat;
+
+            // "EXIT" label on the panel
+            var labelGO = new GameObject("ExitLabel");
+            labelGO.transform.SetParent(go.transform, false);
+            labelGO.transform.localPosition = new Vector3(0f, 0.2f, -0.15f);
+            var tmp = labelGO.AddComponent<TMPro.TextMeshPro>();
+            tmp.text      = "EXIT";
+            tmp.fontSize  = 5f;
+            tmp.color     = new Color(0f, 1f, 0.4f, 1f);
+            tmp.fontStyle = TMPro.FontStyles.Bold;
+            tmp.alignment = TMPro.TextAlignmentOptions.Center;
+            tmp.rectTransform.sizeDelta = new Vector2(6f, 2f);
+
+            // Point light so it's visible from across the arena
+            var lightGO = new GameObject("ExitLight");
+            lightGO.transform.SetParent(go.transform, false);
+            lightGO.transform.localPosition = new Vector3(0f, 0f, -0.5f);
+            var lt = lightGO.AddComponent<Light>();
+            lt.type      = LightType.Point;
+            lt.color     = new Color(0f, 1f, 0.3f);
+            lt.intensity = 8f;
+            lt.range     = 18f;
+            lt.shadows   = LightShadows.None;
+
+            // Trigger collider
+            var col = go.AddComponent<BoxCollider>();
+            col.isTrigger = true;
+            col.size      = new Vector3(6f, 3f, 2f);
+
+            // ExitTrigger script
+            var trigger = go.AddComponent<ExitTrigger>();
+            LinkComponent(trigger, so =>
+                so.FindProperty("_playerLayer").intValue = playerMask);
+        }
+
+        // ──────────────────────────────────────────────────────────────────────
+        // Data nodes — 4 placed around the arena, shoot to siphon
+        // ──────────────────────────────────────────────────────────────────────
+
+        private static void BuildDataNodes()
+        {
+            var root = new GameObject("DataNodes");
+
+            Vector3[] positions =
+            {
+                new Vector3(-12f, 1.2f,  10f),
+                new Vector3( 12f, 1.2f,  10f),
+                new Vector3(  0f, 1.2f,  18f),
+                new Vector3(  0f, 1.2f,  -5f),
+            };
+
+            foreach (var pos in positions)
+                CreateDataNode(root, pos);
+        }
+
+        private static void CreateDataNode(GameObject parent, Vector3 position)
+        {
+            var go = new GameObject("DataNode");
+            go.transform.SetParent(parent.transform, false);
+            go.transform.position = position;
+
+            // Visual — sphere
+            var visual = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            visual.name = "Visual";
+            visual.transform.SetParent(go.transform, false);
+            visual.transform.localScale = Vector3.one * 0.5f;
+            UnityEngine.Object.DestroyImmediate(visual.GetComponent<SphereCollider>());
+
+            var mat = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
+            mat.SetColor("_BaseColor", new Color(0f, 0.96f, 1f));
+            mat.SetColor("_EmissionColor", new Color(0f, 2.4f, 2.5f));
+            mat.EnableKeyword("_EMISSION");
+            visual.GetComponent<MeshRenderer>().sharedMaterial = mat;
+
+            // Collider on root (hit target for raycasts)
+            var col = go.AddComponent<SphereCollider>();
+            col.radius = 0.35f;
+
+            // Point light for glow
+            var lightGO = new GameObject("NodeLight");
+            lightGO.transform.SetParent(go.transform, false);
+            var lt = lightGO.AddComponent<Light>();
+            lt.type      = LightType.Point;
+            lt.color     = new Color(0f, 0.96f, 1f);
+            lt.intensity = 3f;
+            lt.range     = 4f;
+            lt.shadows   = LightShadows.None;
+
+            // Activate VFX — small burst
+            var vfxGO = new GameObject("ActivateVFX");
+            vfxGO.transform.SetParent(go.transform, false);
+            var ps = vfxGO.AddComponent<ParticleSystem>();
+            ConfigureNodeVFX(ps);
+
+            // DataNode script
+            var node = go.AddComponent<DataNode>();
+            LinkComponent(node, so =>
+            {
+                so.FindProperty("_renderer").objectReferenceValue   = visual.GetComponent<MeshRenderer>();
+                so.FindProperty("_nodeLight").objectReferenceValue  = lt;
+                so.FindProperty("_activateVFX").objectReferenceValue = ps;
+            });
+        }
+
+        private static void ConfigureNodeVFX(ParticleSystem ps)
+        {
+            var main = ps.main;
+            main.duration      = 0.3f;
+            main.loop          = false;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.4f, 0.8f);
+            main.startSpeed    = new ParticleSystem.MinMaxCurve(4f, 8f);
+            main.startSize     = new ParticleSystem.MinMaxCurve(0.05f, 0.15f);
+            main.startColor    = new ParticleSystem.MinMaxGradient(new Color(0f, 1f, 0.4f));
+            main.maxParticles  = 40;
+            main.playOnAwake   = false;
+            main.stopAction    = ParticleSystemStopAction.Disable;
+
+            var emission = ps.emission;
+            emission.enabled      = true;
+            emission.rateOverTime = 0f;
+            emission.SetBursts(new[] { new ParticleSystem.Burst(0f, 30) });
+
+            var shape = ps.shape;
+            shape.enabled   = true;
+            shape.shapeType = ParticleSystemShapeType.Sphere;
+            shape.radius    = 0.2f;
+
+            ps.GetComponent<ParticleSystemRenderer>().sharedMaterial =
+                MakeParticleMaterial(new Color(0f, 1f, 0.4f));
         }
 
         // ──────────────────────────────────────────────────────────────────────

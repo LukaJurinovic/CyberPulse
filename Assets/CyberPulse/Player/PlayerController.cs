@@ -50,6 +50,7 @@ namespace CyberPulse.Player
         private float _coyoteTimer;
         private float _jumpBufferTimer;
         private int _jumpsRemaining;
+        private float _lastLandTime;
 
         // Four cardinal directions pre-allocated to avoid per-frame allocation.
         private static readonly Vector3[] WallDirs =
@@ -164,7 +165,14 @@ namespace CyberPulse.Player
             {
                 _rb.linearDamping = _groundDrag;
                 _jumpsRemaining = _maxJumps;
-                OnLanded?.Invoke();
+
+                // Only fire OnLanded when actually falling — Rigidbody jitter on flat surfaces
+                // produces tiny negative Y velocities that would spam the landing dip otherwise.
+                if (_rb.linearVelocity.y < -1.5f)
+                {
+                    _lastLandTime = Time.time;
+                    OnLanded?.Invoke();
+                }
             }
             else if (!nowGrounded && IsGrounded)
             {
