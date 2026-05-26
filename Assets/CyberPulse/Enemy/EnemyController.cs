@@ -106,7 +106,7 @@ namespace CyberPulse.Enemy
 
             if (Vector3.Distance(transform.position, _target.position) <= _attackRange)
             {
-                _agent.ResetPath();
+                if (_agent.isOnNavMesh) _agent.ResetPath();
                 SetState(State.Attack);
             }
             else if (_agent.isOnNavMesh)

@@ -56,6 +56,12 @@ namespace CyberPulse.Player
         private Coroutine _kickbackCoroutine;
         private Coroutine _landingDipCoroutine;
 
+        // Screen shake
+        private float _shakeIntensity;
+        private float _shakeDuration;
+        private float _shakeTimer;
+        private Vector2 _shakeOffset;
+
         // ──────────────────────────────────────────────────────────────────────
         // Lifecycle
         // ──────────────────────────────────────────────────────────────────────
@@ -102,14 +108,45 @@ namespace CyberPulse.Player
             UpdateWallSlideTilt();
             UpdateHeadBob();
             UpdateFOV();
+            UpdateShake();
 
             // Compose all rotation contributions on the pivot.
             transform.localRotation = Quaternion.Euler(_pitch + _dashKickback + _landingDip, 0f, _wallSlideTilt);
 
-            // Head bob is applied to the camera child's local position.
-            _camera.transform.localPosition = new Vector3(0f, _bobOffset, 0f);
+            // Head bob + screen shake applied to the camera child's local position.
+            _camera.transform.localPosition = new Vector3(_shakeOffset.x, _bobOffset + _shakeOffset.y, 0f);
 
             _lookDelta = Vector2.zero;
+        }
+
+        // ──────────────────────────────────────────────────────────────────────
+        // Screen shake — call Shake() from outside (damage, kills, explosions)
+        // ──────────────────────────────────────────────────────────────────────
+
+        /// <summary>Trigger a screen shake. Larger values override smaller in-progress shakes.</summary>
+        public void Shake(float intensity, float duration)
+        {
+            if (intensity > _shakeIntensity)
+            {
+                _shakeIntensity = intensity;
+                _shakeDuration  = duration;
+                _shakeTimer     = duration;
+            }
+        }
+
+        private void UpdateShake()
+        {
+            if (_shakeTimer <= 0f)
+            {
+                _shakeOffset = Vector2.zero;
+                return;
+            }
+            _shakeTimer -= Time.unscaledDeltaTime;
+            float t         = _shakeDuration > 0f ? (_shakeTimer / _shakeDuration) : 0f;
+            float magnitude = _shakeIntensity * t;
+            _shakeOffset = new Vector2(
+                Random.Range(-1f, 1f) * magnitude,
+                Random.Range(-1f, 1f) * magnitude);
         }
 
         // ──────────────────────────────────────────────────────────────────────

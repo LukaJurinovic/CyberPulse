@@ -24,9 +24,15 @@ namespace CyberPulse.Systems
         [Header("Post-Processing — optional")]
         [SerializeField] private Volume _slowMoVolume;
 
-        public bool IsSlowMo { get; private set; }
+        [Header("Kill-Cam")]
+        [SerializeField] private float _killCamTimeScale = 0.05f;
+        [SerializeField] private float _killCamDuration  = 0.8f;
+
+        public bool IsSlowMo   { get; private set; }
+        public bool IsKillCam  { get; private set; }
 
         private Coroutine _lerpRoutine;
+        private Coroutine _killCamRoutine;
 
         // ── Lifecycle ─────────────────────────────────────────────────────────
 
@@ -68,6 +74,34 @@ namespace CyberPulse.Systems
             if (!IsSlowMo) return;
             IsSlowMo = false;
             RestartLerp(Time.timeScale, 1f, _exitDuration, enteringSlowMo: false);
+        }
+
+        /// <summary>
+        /// Hard-freezes time to 5% for 0.8s on last-enemy kill, then snaps back.
+        /// Cancels any active slow-mo lerp so the two effects don't fight.
+        /// </summary>
+        public void TriggerKillCam()
+        {
+            if (IsKillCam) return;
+            if (_lerpRoutine != null) { StopCoroutine(_lerpRoutine); _lerpRoutine = null; }
+            IsSlowMo  = false;
+            IsKillCam = true;
+            _killCamRoutine = StartCoroutine(KillCamRoutine());
+        }
+
+        private IEnumerator KillCamRoutine()
+        {
+            // Kill-cam is a purely visual slow-down — audio pitch is intentionally
+            // NOT changed here so music and SFX continue at normal speed.
+            ApplyTimeScale(_killCamTimeScale);
+            if (_slowMoVolume != null) _slowMoVolume.weight = 0.7f;
+
+            yield return new WaitForSecondsRealtime(_killCamDuration);
+
+            ApplyTimeScale(1f);
+            if (_slowMoVolume != null) _slowMoVolume.weight = 0f;
+            IsKillCam       = false;
+            _killCamRoutine = null;
         }
 
         // ── Internal ──────────────────────────────────────────────────────────
@@ -117,8 +151,12 @@ namespace CyberPulse.Systems
             var sources = FindObjectsByType<AudioSource>(FindObjectsInactive.Exclude);
             foreach (var src in sources)
             {
-                if (src != null)
-                    src.pitch = timeScale;
+                if (src == null) continue;
+                // Skip looping sources (background music) — they should always
+                // play at normal pitch so the music never drops out during slow-mo
+                // or kill-cam. One-shot SFX (non-looping) are pitch-shifted as usual.
+                if (src.loop) continue;
+                src.pitch = timeScale;
             }
         }
     }

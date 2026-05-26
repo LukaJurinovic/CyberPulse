@@ -25,6 +25,9 @@ namespace CyberPulse.Enemy
         /// <summary>Fires each time damage is applied; parameter is the damage amount.</summary>
         public event Action<int> OnDamageTaken;
 
+        /// <summary>Fires on any enemy's death — ScoreManager subscribes to this.</summary>
+        public static event Action OnAnyEnemyKilled;
+
         private void Awake()
         {
             _currentHealth = _maxHealth;
@@ -52,6 +55,7 @@ namespace CyberPulse.Enemy
         {
             _isDead = true;
             OnDeath?.Invoke();
+            OnAnyEnemyKilled?.Invoke();
             _deathShards?.Explode();
             Destroy(gameObject, 2f);
         }

@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEditor.AI;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using CyberPulse.Enemy;
 using CyberPulse.Input;
 using CyberPulse.Player;
@@ -76,7 +77,7 @@ namespace CyberPulse.Editor
             BuildDataNodes();
             BuildEnemies(groundMask, playerMask, groundIdx);
             BuildExitZone(playerMask);
-            BuildSystems(inputReader);
+            BuildSystems(inputReader, player);
 
             // Save before baking — Unity writes NavMesh.asset relative to the scene path.
             // Without a saved path the bake produces nothing and agents stand still.
@@ -108,19 +109,29 @@ namespace CyberPulse.Editor
                 new Vector3(0f, -0.25f, 0f), new Vector3(60f, 0.5f, 60f), DarkFloor, groundLayerIdx);
             floor.GetComponent<MeshRenderer>().sharedMaterial = MakeGridMaterial();
 
-            // Ceiling
-            MakeStaticBox(arena, "Ceiling",
+            // Ceiling + Walls use emissive material so AudioReactor can pulse them
+            var wallMat = MakeWallEmissiveMaterial();
+
+            var ceiling = MakeStaticBox(arena, "Ceiling",
                 new Vector3(0f, 9.25f, 0f), new Vector3(60f, 0.5f, 60f), WallColor, groundLayerIdx);
+            ceiling.GetComponent<MeshRenderer>().sharedMaterial = wallMat;
 
             // Walls (0.5 thick, seated flush against floor/ceiling)
-            MakeStaticBox(arena, "Wall_North",
+            var wallN = MakeStaticBox(arena, "Wall_North",
                 new Vector3(0f,    4.5f,  30.25f), new Vector3(61f, 9f, 0.5f), WallColor, groundLayerIdx);
-            MakeStaticBox(arena, "Wall_South",
+            wallN.GetComponent<MeshRenderer>().sharedMaterial = wallMat;
+
+            var wallS = MakeStaticBox(arena, "Wall_South",
                 new Vector3(0f,    4.5f, -30.25f), new Vector3(61f, 9f, 0.5f), WallColor, groundLayerIdx);
-            MakeStaticBox(arena, "Wall_East",
+            wallS.GetComponent<MeshRenderer>().sharedMaterial = wallMat;
+
+            var wallE = MakeStaticBox(arena, "Wall_East",
                 new Vector3( 30.25f, 4.5f, 0f), new Vector3(0.5f, 9f, 61f), WallColor, groundLayerIdx);
-            MakeStaticBox(arena, "Wall_West",
+            wallE.GetComponent<MeshRenderer>().sharedMaterial = wallMat;
+
+            var wallW = MakeStaticBox(arena, "Wall_West",
                 new Vector3(-30.25f, 4.5f, 0f), new Vector3(0.5f, 9f, 61f), WallColor, groundLayerIdx);
+            wallW.GetComponent<MeshRenderer>().sharedMaterial = wallMat;
         }
 
         // ──────────────────────────────────────────────────────────────────────
@@ -371,7 +382,7 @@ namespace CyberPulse.Editor
             var go = new GameObject("DebugUI");
             var ui        = go.AddComponent<MovementDebugUI>();
             var crosshair = go.AddComponent<CrosshairUI>();
-            var hud       = go.AddComponent<GameHUD>();
+            var hud       = go.AddComponent<DiegeticHUD>();
 
             LinkComponent(ui, so =>
             {
@@ -383,8 +394,14 @@ namespace CyberPulse.Editor
                 so.FindProperty("_controller").objectReferenceValue   = player.GetComponent<PlayerController>();
                 so.FindProperty("_weaponHolder").objectReferenceValue = player.GetComponent<WeaponHolder>();
             });
+            // Diegetic world-space HUD — replaces the old OnGUI GameHUD
+            var cameraPivot = player.GetComponentInChildren<PlayerCamera>().transform;
             LinkComponent(hud, so =>
-                so.FindProperty("_playerStats").objectReferenceValue = player.GetComponent<PlayerStats>());
+            {
+                so.FindProperty("_playerStats").objectReferenceValue  = player.GetComponent<PlayerStats>();
+                so.FindProperty("_weaponHolder").objectReferenceValue = player.GetComponent<WeaponHolder>();
+                so.FindProperty("_cameraPivot").objectReferenceValue  = cameraPivot;
+            });
         }
 
         // ──────────────────────────────────────────────────────────────────────
@@ -522,16 +539,224 @@ namespace CyberPulse.Editor
         // Game systems
         // ──────────────────────────────────────────────────────────────────────
 
-        private static void BuildSystems(InputReader inputReader)
+        private static void BuildSystems(InputReader inputReader, GameObject player)
         {
             var go = new GameObject("GameSystems");
             go.AddComponent<GameManager>();
-            go.AddComponent<TraceMeter>();
+            var traceMeter = go.AddComponent<TraceMeter>();
             go.AddComponent<DataNodeManager>();
             go.AddComponent<PhaseVisuals>();
+            go.AddComponent<ScoreManager>();
+            go.AddComponent<AudioAnalyzer>();
+
+            // ── Dynamic music (ambient + action stems crossfade at 50% trace) ──
+            // With a single stem both sources use the same clip; DynamicMusicPlayer
+            // syncs their playback positions to prevent phasing artefacts.
+            // Swap in a second "action" clip on _actionSrc once you have the asset.
+            var musicGuids = AssetDatabase.FindAssets("t:AudioClip", new[] { "Assets/Music" });
+            AudioClip ambientClip = null, actionClip = null;
+            foreach (var guid in musicGuids)
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                var clip = AssetDatabase.LoadAssetAtPath<AudioClip>(path);
+                if (clip == null) continue;
+                string fn = System.IO.Path.GetFileNameWithoutExtension(path).ToLowerInvariant();
+                if (fn.Contains("action") || fn.Contains("combat") || fn.Contains("intense"))
+                    actionClip  = clip;
+                else if (ambientClip == null)
+                    ambientClip = clip;
+            }
+            // Single-clip fallback — both channels share the clip until a second stem exists.
+            if (ambientClip == null && actionClip != null) { ambientClip = actionClip; }
+            if (actionClip  == null && ambientClip != null)  actionClip  = ambientClip;
+
+            if (ambientClip != null)
+            {
+                var ambSrc         = go.AddComponent<AudioSource>();
+                ambSrc.clip        = ambientClip;
+                ambSrc.playOnAwake = true;
+                ambSrc.loop        = true;
+                ambSrc.spatialBlend = 0f;
+                ambSrc.volume      = 1f;
+
+                var actSrc         = go.AddComponent<AudioSource>();
+                actSrc.clip        = actionClip;
+                actSrc.playOnAwake = false;   // DynamicMusicPlayer starts it in sync
+                actSrc.loop        = true;
+                actSrc.spatialBlend = 0f;
+                actSrc.volume      = 0f;
+
+                var dynMusic = go.AddComponent<DynamicMusicPlayer>();
+                LinkComponent(dynMusic, so =>
+                {
+                    so.FindProperty("_ambientSrc").objectReferenceValue = ambSrc;
+                    so.FindProperty("_actionSrc").objectReferenceValue  = actSrc;
+                });
+                Debug.Log($"[CyberPulse] Dynamic music wired: ambient={ambientClip.name}, action={actionClip.name}");
+            }
+
+            var envReactor = go.AddComponent<EnvironmentAudioReactor>();
+            var analyzer   = go.GetComponent<AudioAnalyzer>();
+            LinkComponent(envReactor, so =>
+                so.FindProperty("_analyzer").objectReferenceValue = analyzer);
+
             var tm = go.AddComponent<TimeManager>();
             LinkComponent(tm, so =>
                 so.FindProperty("_input").objectReferenceValue = inputReader);
+
+            // Damage post-processing volume — chromatic aberration spike on hit
+            var damageVol   = BuildDamageVolume();
+            // Critical volume — tightened vignette + red tint at 80% trace
+            var critVol     = BuildCriticalVolume();
+            var playerCamera = player.GetComponentInChildren<PlayerCamera>();
+            var playerStats  = player.GetComponent<PlayerStats>();
+
+            var ppCtrl = go.AddComponent<PostProcessingController>();
+            LinkComponent(ppCtrl, so =>
+            {
+                so.FindProperty("_damageVolume").objectReferenceValue  = damageVol;
+                so.FindProperty("_playerStats").objectReferenceValue   = playerStats;
+                so.FindProperty("_playerCamera").objectReferenceValue  = playerCamera;
+            });
+
+            // Wire TraceMeter's critical volume (80% → vignette + colour shift)
+            LinkComponent(traceMeter, so =>
+                so.FindProperty("_criticalVolume").objectReferenceValue = critVol);
+
+            // 1000+ instanced data-bits floating around the arena
+            var dataBits = go.AddComponent<DataBitRenderer>();
+            LinkComponent(dataBits, so =>
+                so.FindProperty("_player").objectReferenceValue = player.transform);
+
+            // Glitch renderer feature + controller
+            var glitchFeature = EnsureGlitchRendererFeature();
+            var glitchCtrl    = go.AddComponent<GlitchController>();
+            LinkComponent(glitchCtrl, so =>
+            {
+                so.FindProperty("_playerStats").objectReferenceValue = playerStats;
+                if (glitchFeature != null)
+                    so.FindProperty("_feature").objectReferenceValue = glitchFeature;
+            });
+        }
+
+        private static GlitchRendererFeature EnsureGlitchRendererFeature()
+        {
+            // Find the active UniversalRendererData asset
+            var guids = AssetDatabase.FindAssets("t:UniversalRendererData");
+            UniversalRendererData rendererData = null;
+            foreach (var guid in guids)
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                var rd   = AssetDatabase.LoadAssetAtPath<UniversalRendererData>(path);
+                if (rd != null) { rendererData = rd; break; }
+            }
+
+            if (rendererData == null)
+            {
+                Debug.LogWarning("[CyberPulse] UniversalRendererData not found — GlitchEffect not wired.");
+                return null;
+            }
+
+            // Reuse existing feature if already present
+            foreach (var f in rendererData.rendererFeatures)
+            {
+                if (f is GlitchRendererFeature existing)
+                {
+                    EnsureGlitchMaterial(existing, rendererData);
+                    return existing;
+                }
+            }
+
+            // Create and add the feature
+            var feature  = ScriptableObject.CreateInstance<GlitchRendererFeature>();
+            feature.name = "CyberPulse_GlitchEffect";
+            EnsureGlitchMaterial(feature, rendererData);
+
+            AssetDatabase.AddObjectToAsset(feature, AssetDatabase.GetAssetPath(rendererData));
+            rendererData.rendererFeatures.Add(feature);
+            EditorUtility.SetDirty(rendererData);
+            AssetDatabase.SaveAssets();
+
+            Debug.Log("[CyberPulse] GlitchRendererFeature added to URP renderer.");
+            return feature;
+        }
+
+        private static void EnsureGlitchMaterial(GlitchRendererFeature feature, UniversalRendererData rendererData)
+        {
+            if (feature.material != null) return;
+
+            var glitchShader = Shader.Find("CyberPulse/GlitchEffect");
+            if (glitchShader == null)
+            {
+                Debug.LogWarning("[CyberPulse] CyberPulse/GlitchEffect shader not found — glitch material not created.");
+                return;
+            }
+
+            var mat       = new Material(glitchShader) { name = "M_GlitchEffect" };
+            var matPath   = "Assets/CyberPulse/Materials/M_GlitchEffect.mat";
+            EnsureFolder("Assets/CyberPulse/Materials");
+            AssetDatabase.CreateAsset(mat, matPath);
+            AssetDatabase.SaveAssets();
+
+            feature.material = AssetDatabase.LoadAssetAtPath<Material>(matPath);
+            EditorUtility.SetDirty(feature);
+            EditorUtility.SetDirty(rendererData);
+        }
+
+        private static Volume BuildCriticalVolume()
+        {
+            var go  = new GameObject("Vol_Critical");
+            var vol = go.AddComponent<Volume>();
+            vol.isGlobal = true;
+            vol.weight   = 0f;
+            vol.priority = 15f;
+
+            var profile = ScriptableObject.CreateInstance<VolumeProfile>();
+
+            // Tighter vignette — increases perceived danger
+            var vignette = profile.Add<Vignette>();
+            vignette.active = true;
+            vignette.intensity.Override(0.55f);
+            vignette.smoothness.Override(0.4f);
+            vignette.color.Override(new Color(0.8f, 0.1f, 0.05f));
+
+            // Persistent mild chromatic aberration (distinct from the damage spike)
+            var ca = profile.Add<ChromaticAberration>();
+            ca.active = true;
+            ca.intensity.Override(0.35f);
+
+            // Desaturate + red tint — world feels corrupt / hostile
+            var colorAdj = profile.Add<ColorAdjustments>();
+            colorAdj.active = true;
+            colorAdj.colorFilter.Override(new Color(1f, 0.7f, 0.65f));
+            colorAdj.saturation.Override(-25f);
+
+            vol.profile = profile;
+            return vol;
+        }
+
+        private static Volume BuildDamageVolume()
+        {
+            var go  = new GameObject("Vol_Damage");
+            var vol = go.AddComponent<Volume>();
+            vol.isGlobal = true;
+            vol.weight   = 0f;
+            vol.priority = 20f;
+
+            var profile = ScriptableObject.CreateInstance<VolumeProfile>();
+
+            var ca = profile.Add<ChromaticAberration>();
+            ca.active = true;
+            ca.intensity.Override(0.85f);
+
+            // Subtle red-tint + saturation boost for the hit flash feel
+            var colorAdj = profile.Add<ColorAdjustments>();
+            colorAdj.active = true;
+            colorAdj.colorFilter.Override(new Color(1f, 0.6f, 0.6f));
+            colorAdj.saturation.Override(-15f);
+
+            vol.profile = profile;
+            return vol;
         }
 
         // ──────────────────────────────────────────────────────────────────────
@@ -858,6 +1083,16 @@ namespace CyberPulse.Editor
 
             Debug.LogWarning("[CyberPulse] CyberPulse/WireframeEnemy shader not found — using fallback material.");
             return MakeSolidMaterial(EnemyColor);
+        }
+
+        private static Material MakeWallEmissiveMaterial()
+        {
+            var mat = new Material(UrpLit()) { name = "M_Wall_Emissive" };
+            mat.SetColor("_BaseColor",     WallColor);
+            // Start with a very dim emissive — AudioReactor will boost it at runtime
+            mat.SetColor("_EmissionColor", new Color(0.04f, 0.05f, 0.10f));
+            mat.EnableKeyword("_EMISSION");
+            return mat;
         }
 
         private static Material MakeSolidMaterial(Color color)

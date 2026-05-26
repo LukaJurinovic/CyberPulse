@@ -119,8 +119,12 @@ namespace CyberPulse.Systems
         {
             _liveEnemies.Remove(enemy);
             _value = Mathf.Max(0f, _value - _drainOnKill);
-            if (_liveEnemies.Count == 0 && GameManager.Instance?.CurrentPhase == GamePhase.Purge)
-                GameManager.Instance.SetPhase(GamePhase.Extract);
+            if (_liveEnemies.Count == 0)
+            {
+                TimeManager.Instance?.TriggerKillCam();
+                if (GameManager.Instance?.CurrentPhase == GamePhase.Purge)
+                    GameManager.Instance.SetPhase(GamePhase.Extract);
+            }
         }
 
         // ── Threshold reactions ───────────────────────────────────────────────
