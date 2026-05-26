@@ -10,6 +10,7 @@ namespace CyberPulse.Enemy
     {
         [SerializeField] private int _maxHealth = 50;
         [SerializeField] private ParticleSystem _hitVFX;
+        [SerializeField] private EnemyDeathShards _deathShards;
 
         private int _currentHealth;
         private bool _isDead;
@@ -51,6 +52,7 @@ namespace CyberPulse.Enemy
         {
             _isDead = true;
             OnDeath?.Invoke();
+            _deathShards?.Explode();
             Destroy(gameObject, 2f);
         }
     }

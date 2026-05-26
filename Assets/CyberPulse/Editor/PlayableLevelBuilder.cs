@@ -76,7 +76,7 @@ namespace CyberPulse.Editor
             BuildDataNodes();
             BuildEnemies(groundMask, playerMask, groundIdx);
             BuildExitZone(playerMask);
-            BuildSystems();
+            BuildSystems(inputReader);
 
             // Save before baking — Unity writes NavMesh.asset relative to the scene path.
             // Without a saved path the bake produces nothing and agents stand still.
@@ -356,6 +356,9 @@ namespace CyberPulse.Editor
                 arr.GetArrayElementAtIndex(0).objectReferenceValue = hitscan;
             });
 
+            // Grid floor proximity glow — feeds player world pos to GridFloor.shader each frame
+            player.AddComponent<GridFloorUpdater>();
+
             return player;
         }
 
@@ -452,7 +455,7 @@ namespace CyberPulse.Editor
             visual.transform.SetParent(enemy.transform, false);
             visual.transform.localPosition = new Vector3(0f, 1f, 0f);
             UnityEngine.Object.DestroyImmediate(visual.GetComponent<CapsuleCollider>());
-            visual.GetComponent<MeshRenderer>().sharedMaterial = MakeSolidMaterial(EnemyColor);
+            visual.GetComponent<MeshRenderer>().sharedMaterial = MakeWireframeMaterial();
 
             // Hit VFX
             var hitFXGO = new GameObject("HitVFX");
@@ -474,13 +477,20 @@ namespace CyberPulse.Editor
 
             // Script components — order matters: dependencies before EnemyController
             var health     = enemy.AddComponent<EnemyHealth>();
+            var shards     = enemy.AddComponent<EnemyDeathShards>();
             var sensor     = enemy.AddComponent<EnemySensor>();
             var attack     = enemy.AddComponent<EnemyAttack>();
             var controller = enemy.AddComponent<EnemyController>();
 
             // Wire serialized fields
             LinkComponent(health, so =>
-                so.FindProperty("_hitVFX").objectReferenceValue = hitPs);
+            {
+                so.FindProperty("_hitVFX").objectReferenceValue      = hitPs;
+                so.FindProperty("_deathShards").objectReferenceValue = shards;
+            });
+
+            LinkComponent(shards, so =>
+                so.FindProperty("_enemyRenderer").objectReferenceValue = visual.GetComponent<MeshRenderer>());
 
             LinkComponent(sensor, so =>
             {
@@ -512,13 +522,16 @@ namespace CyberPulse.Editor
         // Game systems
         // ──────────────────────────────────────────────────────────────────────
 
-        private static void BuildSystems()
+        private static void BuildSystems(InputReader inputReader)
         {
             var go = new GameObject("GameSystems");
             go.AddComponent<GameManager>();
             go.AddComponent<TraceMeter>();
             go.AddComponent<DataNodeManager>();
             go.AddComponent<PhaseVisuals>();
+            var tm = go.AddComponent<TimeManager>();
+            LinkComponent(tm, so =>
+                so.FindProperty("_input").objectReferenceValue = inputReader);
         }
 
         // ──────────────────────────────────────────────────────────────────────
@@ -797,17 +810,54 @@ namespace CyberPulse.Editor
 
         private static Material MakeGridMaterial()
         {
-            var mat = new Material(UrpLit()) { name = "M_Grid" };
+            var gridShader = Shader.Find("CyberPulse/GridFloor");
+            if (gridShader != null)
+            {
+                var mat = new Material(gridShader) { name = "M_Grid_HLSL" };
+                // World-space grid: 1 cell per unit, line width 4% of cell
+                mat.SetFloat("_GridScale",         1f);
+                mat.SetFloat("_LineWidth",         0.04f);
+                mat.SetColor("_BaseColor",         DarkFloor);
+                mat.SetColor("_GridColor",         new Color(0f, 0.96f, 1f, 1f));
+                mat.SetColor("_GlowColor",         new Color(0.3f, 1.2f, 1.2f, 1f));
+                mat.SetFloat("_EmissiveIntensity", 2.5f);
+                mat.SetFloat("_GlowRadius",        10f);
+                return mat;
+            }
+
+            // Fallback to texture-based grid if shader not yet compiled
+            Debug.LogWarning("[CyberPulse] CyberPulse/GridFloor shader not found — using fallback material.");
+            var fallback = new Material(UrpLit()) { name = "M_Grid" };
             var tex  = MakeGridTex(512, 32, DarkFloor, new Color(0f, 0.96f, 1f, 0.4f));
             var emit = MakeGridTex(512, 32, Color.black, CyanEmit * 0.3f);
-            mat.SetTexture("_BaseMap", tex);
-            mat.SetColor("_BaseColor", Color.white);
-            mat.SetTexture("_EmissionMap", emit);
-            mat.SetColor("_EmissionColor", CyanEmit * 0.3f);
-            mat.EnableKeyword("_EMISSION");
-            mat.SetTextureScale("_BaseMap",     new Vector2(60f, 60f));
-            mat.SetTextureScale("_EmissionMap", new Vector2(60f, 60f));
-            return mat;
+            fallback.SetTexture("_BaseMap",  tex);
+            fallback.SetColor("_BaseColor",  Color.white);
+            fallback.SetTexture("_EmissionMap", emit);
+            fallback.SetColor("_EmissionColor", CyanEmit * 0.3f);
+            fallback.EnableKeyword("_EMISSION");
+            fallback.SetTextureScale("_BaseMap",     new Vector2(60f, 60f));
+            fallback.SetTextureScale("_EmissionMap", new Vector2(60f, 60f));
+            return fallback;
+        }
+
+        private static Material MakeWireframeMaterial()
+        {
+            var wireShader = Shader.Find("CyberPulse/WireframeEnemy");
+            if (wireShader != null)
+            {
+                var mat = new Material(wireShader) { name = "M_Enemy_Wireframe" };
+                mat.SetColor("_EdgeColor",     new Color(2.4f, 0.4f, 0.05f, 1f));  // HDR orange-red
+                mat.SetColor("_FillColor",     new Color(0.08f, 0.01f, 0.01f, 1f));
+                mat.SetFloat("_FresnelPower",  3.5f);
+                mat.SetFloat("_EdgeWidth",     0.55f);
+                mat.SetFloat("_PulseSpeed",    1.8f);
+                mat.SetFloat("_PulseAmount",   0.25f);
+                mat.SetFloat("_EmissiveScale", 3.5f);
+                return mat;
+            }
+
+            Debug.LogWarning("[CyberPulse] CyberPulse/WireframeEnemy shader not found — using fallback material.");
+            return MakeSolidMaterial(EnemyColor);
         }
 
         private static Material MakeSolidMaterial(Color color)
