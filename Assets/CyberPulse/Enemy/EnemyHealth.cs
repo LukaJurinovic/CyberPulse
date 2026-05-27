@@ -28,6 +28,9 @@ namespace CyberPulse.Enemy
         /// <summary>Fires on any enemy's death — ScoreManager subscribes to this.</summary>
         public static event Action OnAnyEnemyKilled;
 
+        /// <summary>Override max health before Awake runs (call on inactive GO). Safe to call before SetActive(true).</summary>
+        public void InitHealth(int hp) { _maxHealth = hp; }
+
         private void Awake()
         {
             _currentHealth = _maxHealth;

@@ -28,6 +28,10 @@ namespace CyberPulse.Systems
         [SerializeField] private Color _wallBaseEmit = new Color(0.04f, 0.05f, 0.10f);
         [SerializeField] private Color _wallPeakEmit = new Color(0.3f,  0.9f,  2.5f);   // HDR
 
+        // Energy-based palette tint — lerp between cool blue and warm cyan.
+        private static readonly Color CoolBase = new Color(0.02f, 0.04f, 0.12f);
+        private static readonly Color WarmBase = new Color(0.08f, 0.20f, 0.35f);
+
         private static readonly int    EmissionColorID = Shader.PropertyToID("_EmissionColor");
         private static readonly string[] WallNames =
             { "Wall_North", "Wall_South", "Wall_East", "Wall_West", "Ceiling" };
@@ -60,6 +64,26 @@ namespace CyberPulse.Systems
             foreach (var r in _reactors)
                 r.sharedMaterial = _runtimeMat;
 
+            // Tint base emission to match the song's energy level once analysis is done.
+            if (SongAnalyzer.Instance != null)
+            {
+                if (SongAnalyzer.Instance.IsAnalyzed)
+                    ApplySongPalette(SongAnalyzer.Instance.Profile);
+                else
+                    SongAnalyzer.Instance.OnAnalysisComplete += ApplySongPalette;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (SongAnalyzer.Instance != null)
+                SongAnalyzer.Instance.OnAnalysisComplete -= ApplySongPalette;
+        }
+
+        private void ApplySongPalette(SongProfile profile)
+        {
+            float t = Mathf.Clamp01((profile.AverageEnergy - 0.2f) / 0.6f);
+            _wallBaseEmit = Color.Lerp(CoolBase, WarmBase, t);
         }
 
         private void Update()

@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using CyberPulse.Combat;
+using CyberPulse.Systems;
 
 namespace CyberPulse.Weapons
 {
@@ -11,11 +12,19 @@ namespace CyberPulse.Weapons
     public class HitscanWeapon : WeaponBase
     {
         [Header("Hitscan")]
-        [SerializeField] private int _pelletsPerShot = 1;
-        [SerializeField] private float _spreadAngle = 0f;
-        [SerializeField] private int _damage = 25;
-        [SerializeField] private float _range = 200f;
-        [SerializeField] private LayerMask _hitMask = ~0;
+        [SerializeField] private int   _pelletsPerShot = 1;
+        [SerializeField] private float _spreadAngle    = 0f;
+        [SerializeField] private int   _damage         = 25;
+        [SerializeField] private float _range          = 200f;
+        [SerializeField] private LayerMask _hitMask    = ~0;
+
+        [Header("Beat Bonus")]
+        [SerializeField] private float _onBeatDamageMultiplier = 1.5f;
+
+        [Header("Burst Special (costs SpecialCost SYNC)")]
+        [SerializeField] private int   _burstCount    = 6;
+        [SerializeField] private float _burstFireRate = 30f;   // shots per second during burst
+        private bool _burstActive;
 
         [Header("Bullet Trace")]
         [SerializeField] private float _traceDuration = 0.06f;
@@ -23,6 +32,11 @@ namespace CyberPulse.Weapons
 
         protected override void FireProjectile(Transform cameraTransform)
         {
+            bool onBeat = BeatClock.Instance != null && BeatClock.Instance.IsOnBeat;
+            int  damage = onBeat
+                ? Mathf.RoundToInt(_damage * _onBeatDamageMultiplier)
+                : _damage;
+
             for (int i = 0; i < _pelletsPerShot; i++)
             {
                 Vector3 dir = cameraTransform.forward;
@@ -35,18 +49,37 @@ namespace CyberPulse.Weapons
                         0f) * dir;
                 }
 
-                Ray ray = new Ray(cameraTransform.position, dir);
+                Ray     ray      = new Ray(cameraTransform.position, dir);
                 Vector3 endpoint = cameraTransform.position + dir * _range;
 
                 if (Physics.Raycast(ray, out RaycastHit hit, _range, _hitMask, QueryTriggerInteraction.Ignore))
                 {
                     endpoint = hit.point;
                     var damageable = hit.collider.GetComponentInParent<IDamageable>();
-                    damageable?.TakeDamage(_damage);
+                    damageable?.TakeDamage(damage);
                 }
 
                 StartCoroutine(DrawTrace(cameraTransform.position, endpoint));
             }
+        }
+
+        public override void TriggerSpecial()
+        {
+            if (_burstActive || _lastCameraTransform == null) return;
+            StartCoroutine(BurstRoutine());
+        }
+
+        private IEnumerator BurstRoutine()
+        {
+            _burstActive = true;
+            float interval = 1f / _burstFireRate;
+            for (int i = 0; i < _burstCount; i++)
+            {
+                if (CurrentAmmo <= 0) break;
+                FireBurstShot(_lastCameraTransform);
+                yield return new WaitForSeconds(interval);
+            }
+            _burstActive = false;
         }
 
         private IEnumerator DrawTrace(Vector3 start, Vector3 end)

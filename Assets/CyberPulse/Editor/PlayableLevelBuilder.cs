@@ -74,10 +74,7 @@ namespace CyberPulse.Editor
 
             var player = BuildPlayer(inputReader, groundMask, playerIdx);
             BuildDebugUI(player);
-            BuildDataNodes();
-            BuildEnemies(groundMask, playerMask, groundIdx);
-            BuildExitZone(playerMask);
-            BuildSystems(inputReader, player);
+            BuildSystems(inputReader, player, groundMask, playerMask, groundIdx);
 
             // Save before baking — Unity writes NavMesh.asset relative to the scene path.
             // Without a saved path the bake produces nothing and agents stand still.
@@ -142,68 +139,10 @@ namespace CyberPulse.Editor
         {
             var interior = new GameObject("Interior");
 
-            // Jump platforms — northwest quadrant, x=-22..−6, z=+14
-            float[] heights = { 1f, 2f, 3.5f, 5f, 7f };
-            var platforms = new GameObject("JumpPlatforms");
-            platforms.transform.SetParent(interior.transform, false);
-            for (int i = 0; i < heights.Length; i++)
-            {
-                float px = -22f + i * 4f;
-                MakeStaticBox(platforms, $"Plat_{i + 1}",
-                    new Vector3(px, heights[i] + 0.1f, 14f),
-                    new Vector3(3f, 0.2f, 3f), PlatColor, groundLayerIdx);
-            }
-
-            // Wall-slide corridor — east side, x=16 & x=19.5, runs z=−2..+12
-            var corridor = new GameObject("WallSlide_Corridor");
-            corridor.transform.SetParent(interior.transform, false);
-            MakeStaticBox(corridor, "WallA",
-                new Vector3(16f,   2.5f, 5f), new Vector3(0.4f, 5f, 14f), WallColor, groundLayerIdx);
-            MakeStaticBox(corridor, "WallB",
-                new Vector3(19.5f, 2.5f, 5f), new Vector3(0.4f, 5f, 14f), WallColor, groundLayerIdx);
-
-            // Dash markers — along z from player spawn (0,0,−22) going north
-            // Distance labels show meters from spawn; world z = −22 + d
-            var markers = new GameObject("DashMarkers");
-            markers.transform.SetParent(interior.transform, false);
-            int[] distances = { 3, 5, 8, 12, 16, 20 };
-            foreach (int d in distances)
-            {
-                float wz = -22f + d;
-                var slab = MakeStaticBox(markers, $"Marker_{d}m",
-                    new Vector3(0f, 1.5f, wz), new Vector3(2f, 3f, 0.15f), MarkerColor, groundLayerIdx);
-
-                var label = new GameObject($"Label_{d}m");
-                label.transform.SetParent(slab.transform, false);
-                label.transform.localPosition = new Vector3(0f, 0.6f, -0.12f);
-                var tmp = label.AddComponent<TMPro.TextMeshPro>();
-                tmp.text = $"{d}m";
-                tmp.fontSize = 2.5f;
-                tmp.color = CyanHDR;
-                tmp.alignment = TMPro.TextAlignmentOptions.Center;
-                tmp.rectTransform.sizeDelta = new Vector2(2f, 1f);
-            }
-
-            // Cover — scattered boxes to break sightlines and enable tactics
-            var cover = new GameObject("Cover");
-            cover.transform.SetParent(interior.transform, false);
-            (Vector3 pos, Vector3 size)[] blocks =
-            {
-                (new Vector3(-9f,  1f,   2f), new Vector3(1f, 2f, 4f)),
-                (new Vector3( 9f,  1f,   2f), new Vector3(1f, 2f, 4f)),
-                (new Vector3(-9f,  1f,  -8f), new Vector3(4f, 2f, 1f)),
-                (new Vector3( 9f,  1f,  -8f), new Vector3(4f, 2f, 1f)),
-                (new Vector3( 0f,  1f,   8f), new Vector3(5f, 2f, 1f)),
-                (new Vector3( 0f,  1f, -14f), new Vector3(3f, 2f, 1f)),
-                // L-shape NW side
-                (new Vector3(-14f, 1f,   0f), new Vector3(1f, 2f, 3f)),
-                (new Vector3(-15f, 1f,  -1f), new Vector3(3f, 2f, 1f)),
-                // L-shape NE side
-                (new Vector3( 14f, 1f,   0f), new Vector3(1f, 2f, 3f)),
-                (new Vector3( 15f, 1f,  -1f), new Vector3(3f, 2f, 1f)),
-            };
-            for (int i = 0; i < blocks.Length; i++)
-                MakeStaticBox(cover, $"Cover_{i}", blocks[i].pos, blocks[i].size, CoverColor, groundLayerIdx);
+            // All obstacles are procedurally generated at runtime by ProceduralArenaGenerator.
+            var generator = interior.AddComponent<ProceduralArenaGenerator>();
+            LinkComponent(generator, so =>
+                so.FindProperty("_groundLayerIndex").intValue = groundLayerIdx);
         }
 
         // ──────────────────────────────────────────────────────────────────────
@@ -273,10 +212,14 @@ namespace CyberPulse.Editor
             col.radius = 0.4f;
             col.center = new Vector3(0f, 0.9f, 0f);
 
-            var controller = player.AddComponent<PlayerController>();
-            var dash       = player.AddComponent<DashAbility>();
-            player.AddComponent<PlayerStats>();
+            var controller  = player.AddComponent<PlayerController>();
+            var dash        = player.AddComponent<DashAbility>();
+            var playerStats = player.AddComponent<PlayerStats>();
             player.AddComponent<PlayerDeathHandler>();
+
+            // Trace Meter is the sole health mechanic — effective HP death requires 9999/10 = ~1000 hits.
+            LinkComponent(playerStats, so =>
+                so.FindProperty("_maxHealth").intValue = 9999);
 
             // CameraPivot at eye height
             var pivotGO = new GameObject("CameraPivot");
@@ -348,6 +291,8 @@ namespace CyberPulse.Editor
 
             LinkComponent(hitscan, so =>
             {
+                so.FindProperty("_weaponName").stringValue            = "Assault Rifle";
+                so.FindProperty("_specialCost").floatValue            = 60f;
                 so.FindProperty("_muzzleFlash").objectReferenceValue  = muzzlePs;
                 so.FindProperty("_audioSource").objectReferenceValue  = weaponAudio;
             });
@@ -357,14 +302,85 @@ namespace CyberPulse.Editor
                 so.FindProperty("_controller").objectReferenceValue = controller;
             });
 
+            // SFX clips — loaded once, shared below.
+            var sfxRevolverShot   = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Sfx/revolver_shot.mp3");
+            var sfxRevolverReload = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Sfx/revolver_reload.mp3");
+            var sfxShotgunShot    = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Sfx/shotgun_shot.mp3");
+            var sfxShotgunReload  = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Sfx/shotgun_reload.mp3");
+
+            if (sfxRevolverShot   == null) Debug.LogWarning("[CyberPulse] Assets/Sfx/revolver_shot.mp3 not found.");
+            if (sfxRevolverReload == null) Debug.LogWarning("[CyberPulse] Assets/Sfx/revolver_reload.mp3 not found.");
+            if (sfxShotgunShot    == null) Debug.LogWarning("[CyberPulse] Assets/Sfx/shotgun_shot.mp3 not found.");
+            if (sfxShotgunReload  == null) Debug.LogWarning("[CyberPulse] Assets/Sfx/shotgun_reload.mp3 not found.");
+
+            // Revolver — high-damage, slow fire rate, 6-round cylinder
+            var revolverGO = new GameObject("Weapon_Revolver");
+            revolverGO.transform.SetParent(socketGO.transform, false);
+            revolverGO.SetActive(false);
+            var revolver      = revolverGO.AddComponent<RevolverWeapon>();
+            var revolverAudio = revolverGO.AddComponent<AudioSource>();
+            revolverAudio.spatialBlend = 0f;
+            var revolverFlashGO = new GameObject("MuzzleFlash");
+            revolverFlashGO.transform.SetParent(revolverGO.transform, false);
+            revolverFlashGO.transform.localPosition = new Vector3(0f, 0f, 0.4f);
+            var revolverFlashPs = revolverFlashGO.AddComponent<ParticleSystem>();
+            ConfigureMuzzleFlash(revolverFlashPs);
+            LinkComponent(revolver, so =>
+            {
+                so.FindProperty("_weaponName").stringValue            = "Revolver";
+                so.FindProperty("_specialCost").floatValue            = 50f;
+                so.FindProperty("_isAutomatic").boolValue             = false;
+                so.FindProperty("_fireRate").floatValue               = 1.5f;
+                so.FindProperty("_magazineSize").intValue             = 6;
+                so.FindProperty("_reserveAmmo").intValue              = 30;
+                so.FindProperty("_reloadDuration").floatValue         = 1.2f;
+                so.FindProperty("_muzzleFlash").objectReferenceValue  = revolverFlashPs;
+                so.FindProperty("_audioSource").objectReferenceValue  = revolverAudio;
+                if (sfxRevolverShot   != null)
+                    so.FindProperty("_fireClip").objectReferenceValue   = sfxRevolverShot;
+                if (sfxRevolverReload != null)
+                    so.FindProperty("_reloadClip").objectReferenceValue = sfxRevolverReload;
+            });
+
+            // Shotgun — 8-pellet pump, 2-round mag
+            var shotgunGO = new GameObject("Weapon_Shotgun");
+            shotgunGO.transform.SetParent(socketGO.transform, false);
+            shotgunGO.SetActive(false);
+            var shotgun      = shotgunGO.AddComponent<ShotgunWeapon>();
+            var shotgunAudio = shotgunGO.AddComponent<AudioSource>();
+            shotgunAudio.spatialBlend = 0f;
+            var shotgunFlashGO = new GameObject("MuzzleFlash");
+            shotgunFlashGO.transform.SetParent(shotgunGO.transform, false);
+            shotgunFlashGO.transform.localPosition = new Vector3(0f, 0f, 0.5f);
+            var shotgunFlashPs = shotgunFlashGO.AddComponent<ParticleSystem>();
+            ConfigureMuzzleFlash(shotgunFlashPs);
+            LinkComponent(shotgun, so =>
+            {
+                so.FindProperty("_weaponName").stringValue            = "Shotgun";
+                so.FindProperty("_specialCost").floatValue            = 70f;
+                so.FindProperty("_isAutomatic").boolValue             = false;
+                so.FindProperty("_fireRate").floatValue               = 1.0f;
+                so.FindProperty("_magazineSize").intValue             = 2;
+                so.FindProperty("_reserveAmmo").intValue              = 16;
+                so.FindProperty("_reloadDuration").floatValue         = 2.0f;
+                so.FindProperty("_muzzleFlash").objectReferenceValue  = shotgunFlashPs;
+                so.FindProperty("_audioSource").objectReferenceValue  = shotgunAudio;
+                if (sfxShotgunShot   != null)
+                    so.FindProperty("_fireClip").objectReferenceValue   = sfxShotgunShot;
+                if (sfxShotgunReload != null)
+                    so.FindProperty("_reloadClip").objectReferenceValue = sfxShotgunReload;
+            });
+
             var holder = player.AddComponent<WeaponHolder>();
             LinkComponent(holder, so =>
             {
                 so.FindProperty("_input").objectReferenceValue           = inputReader;
                 so.FindProperty("_cameraTransform").objectReferenceValue = pivotGO.transform;
                 var arr = so.FindProperty("_weapons");
-                arr.arraySize = 1;
+                arr.arraySize = 3;
                 arr.GetArrayElementAtIndex(0).objectReferenceValue = hitscan;
+                arr.GetArrayElementAtIndex(1).objectReferenceValue = revolver;
+                arr.GetArrayElementAtIndex(2).objectReferenceValue = shotgun;
             });
 
             // Grid floor proximity glow — feeds player world pos to GridFloor.shader each frame
@@ -539,20 +555,24 @@ namespace CyberPulse.Editor
         // Game systems
         // ──────────────────────────────────────────────────────────────────────
 
-        private static void BuildSystems(InputReader inputReader, GameObject player)
+        private static void BuildSystems(InputReader inputReader, GameObject player,
+            int groundMask, int playerMask, int groundLayerIdx)
         {
             var go = new GameObject("GameSystems");
             go.AddComponent<GameManager>();
             var traceMeter = go.AddComponent<TraceMeter>();
-            go.AddComponent<DataNodeManager>();
             go.AddComponent<PhaseVisuals>();
             go.AddComponent<ScoreManager>();
             go.AddComponent<AudioAnalyzer>();
+            var songAnalyzer = go.AddComponent<SongAnalyzer>();
+            var beatClock    = go.AddComponent<BeatClock>();
+            go.AddComponent<SyncGauge>();
 
             // ── Dynamic music (ambient + action stems crossfade at 50% trace) ──
             // With a single stem both sources use the same clip; DynamicMusicPlayer
             // syncs their playback positions to prevent phasing artefacts.
             // Swap in a second "action" clip on _actionSrc once you have the asset.
+            AudioSource ambSrc = null;   // captured for BeatClock / WaveDirector wiring below
             var musicGuids = AssetDatabase.FindAssets("t:AudioClip", new[] { "Assets/Music" });
             AudioClip ambientClip = null, actionClip = null;
             foreach (var guid in musicGuids)
@@ -572,17 +592,17 @@ namespace CyberPulse.Editor
 
             if (ambientClip != null)
             {
-                var ambSrc         = go.AddComponent<AudioSource>();
+                ambSrc             = go.AddComponent<AudioSource>();
                 ambSrc.clip        = ambientClip;
                 ambSrc.playOnAwake = true;
-                ambSrc.loop        = true;
+                ambSrc.loop        = false;   // play once — WaveDirector detects end for win state
                 ambSrc.spatialBlend = 0f;
                 ambSrc.volume      = 1f;
 
                 var actSrc         = go.AddComponent<AudioSource>();
                 actSrc.clip        = actionClip;
                 actSrc.playOnAwake = false;   // DynamicMusicPlayer starts it in sync
-                actSrc.loop        = true;
+                actSrc.loop        = false;
                 actSrc.spatialBlend = 0f;
                 actSrc.volume      = 0f;
 
@@ -593,6 +613,12 @@ namespace CyberPulse.Editor
                     so.FindProperty("_actionSrc").objectReferenceValue  = actSrc;
                 });
                 Debug.Log($"[CyberPulse] Dynamic music wired: ambient={ambientClip.name}, action={actionClip.name}");
+
+                // Wire the same ambient source to BeatClock (beat timing) and SongAnalyzer (BPM detection).
+                LinkComponent(beatClock, so =>
+                    so.FindProperty("_musicSource").objectReferenceValue = ambSrc);
+                LinkComponent(songAnalyzer, so =>
+                    so.FindProperty("_musicSource").objectReferenceValue = ambSrc);
             }
 
             var envReactor = go.AddComponent<EnvironmentAudioReactor>();
@@ -619,9 +645,14 @@ namespace CyberPulse.Editor
                 so.FindProperty("_playerCamera").objectReferenceValue  = playerCamera;
             });
 
-            // Wire TraceMeter's critical volume (80% → vignette + colour shift)
+            // Wire TraceMeter's critical volume, player stats, and music source (for time-scaling fill)
             LinkComponent(traceMeter, so =>
-                so.FindProperty("_criticalVolume").objectReferenceValue = critVol);
+            {
+                so.FindProperty("_criticalVolume").objectReferenceValue = critVol;
+                so.FindProperty("_playerStats").objectReferenceValue    = playerStats;
+                if (ambSrc != null)
+                    so.FindProperty("_musicSource").objectReferenceValue = ambSrc;
+            });
 
             // 1000+ instanced data-bits floating around the arena
             var dataBits = go.AddComponent<DataBitRenderer>();
@@ -637,6 +668,348 @@ namespace CyberPulse.Editor
                 if (glitchFeature != null)
                     so.FindProperty("_feature").objectReferenceValue = glitchFeature;
             });
+
+            // ── Rhythm systems ─────────────────────────────────────────────────
+            // WaveDirector: song-driven enemy wave spawner.
+            var waveDirector   = go.AddComponent<WaveDirector>();
+            var seekerPrefab   = CreateSeekerPrefab(groundMask, playerMask, groundLayerIdx);
+            var spherePrefab   = CreateSpherePrefab(groundMask, playerMask, groundLayerIdx);
+            var trianglePrefab = CreateTrianglePrefab(groundMask, playerMask, groundLayerIdx);
+            var cylinderPrefab = CreateCylinderPrefab(groundMask, playerMask, groundLayerIdx);
+            var cubePrefab     = CreateCubePrefab(groundMask, playerMask, groundLayerIdx);
+            LinkComponent(waveDirector, so =>
+            {
+                if (ambSrc != null)
+                    so.FindProperty("_musicSource").objectReferenceValue = ambSrc;
+                if (seekerPrefab   != null) so.FindProperty("_seekerPrefab").objectReferenceValue   = seekerPrefab;
+                if (spherePrefab   != null) so.FindProperty("_spherePrefab").objectReferenceValue   = spherePrefab;
+                if (trianglePrefab != null) so.FindProperty("_trianglePrefab").objectReferenceValue = trianglePrefab;
+                if (cylinderPrefab != null) so.FindProperty("_cylinderPrefab").objectReferenceValue = cylinderPrefab;
+                if (cubePrefab     != null) so.FindProperty("_cubePrefab").objectReferenceValue     = cubePrefab;
+            });
+
+            // BeatReactor: links player state to BeatClock (damage bonuses, SYNC, penalties).
+            var dash        = player.GetComponent<DashAbility>();
+            var controller  = player.GetComponent<PlayerController>();
+            var beatReactor = go.AddComponent<BeatReactor>();
+            LinkComponent(beatReactor, so =>
+            {
+                so.FindProperty("_controller").objectReferenceValue  = controller;
+                so.FindProperty("_dash").objectReferenceValue        = dash;
+                so.FindProperty("_playerStats").objectReferenceValue = playerStats;
+            });
+        }
+
+        // ──────────────────────────────────────────────────────────────────────
+        // Seeker prefab — used by WaveDirector for procedural wave spawning
+        // ──────────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Creates (or reuses) a Seeker enemy prefab at Assets/CyberPulse/Prefabs/Seeker.prefab.
+        /// The prefab has no patrol points so spawned seekers idle in place until they
+        /// detect the player via EnemySensor, then chase and attack.
+        /// </summary>
+        private static GameObject CreateSeekerPrefab(int groundMask, int playerMask, int groundLayerIdx)
+        {
+            const string prefabPath = "Assets/CyberPulse/Prefabs/Seeker.prefab";
+            EnsureFolder("Assets/CyberPulse/Prefabs");
+
+            // Reuse an existing prefab so rebuilding the scene doesn't duplicate assets.
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            if (existing != null) return existing;
+
+            // Build a temporary scene object to extract to a prefab.
+            var root = new GameObject("Seeker_Temp");
+
+            var col = root.AddComponent<CapsuleCollider>();
+            col.height = 2f;
+            col.radius = 0.4f;
+            col.center = new Vector3(0f, 1f, 0f);
+
+            var agent           = root.AddComponent<UnityEngine.AI.NavMeshAgent>();
+            agent.height        = 2f;
+            agent.radius        = 0.4f;
+            agent.angularSpeed  = 360f;
+            agent.acceleration  = 12f;
+            agent.stoppingDistance = 0.5f;
+
+            var visual = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            visual.name = "Visual";
+            visual.transform.SetParent(root.transform, false);
+            visual.transform.localPosition = new Vector3(0f, 1f, 0f);
+            UnityEngine.Object.DestroyImmediate(visual.GetComponent<CapsuleCollider>());
+            visual.GetComponent<MeshRenderer>().sharedMaterial = MakeWireframeMaterial();
+
+            var hitFXGO = new GameObject("HitVFX");
+            hitFXGO.transform.SetParent(root.transform, false);
+            var hitPs = hitFXGO.AddComponent<ParticleSystem>();
+            ConfigureHitVFX(hitPs);
+
+            var health     = root.AddComponent<EnemyHealth>();
+            var shards     = root.AddComponent<EnemyDeathShards>();
+            var sensor     = root.AddComponent<EnemySensor>();
+            var attack     = root.AddComponent<EnemyAttack>();
+            root.AddComponent<EnemyController>();   // no patrol points → idles until detected
+
+            LinkComponent(health, so =>
+            {
+                so.FindProperty("_hitVFX").objectReferenceValue      = hitPs;
+                so.FindProperty("_deathShards").objectReferenceValue = shards;
+            });
+            LinkComponent(shards, so =>
+                so.FindProperty("_enemyRenderer").objectReferenceValue = visual.GetComponent<MeshRenderer>());
+            LinkComponent(sensor, so =>
+            {
+                so.FindProperty("_detectionRange").floatValue  = 20f;
+                so.FindProperty("_fieldOfView").floatValue     = 160f;
+                so.FindProperty("_checkInterval").floatValue   = 0.15f;
+                so.FindProperty("_playerLayer").intValue       = playerMask;
+                so.FindProperty("_obstructionLayer").intValue  = groundMask;
+            });
+            LinkComponent(attack, so =>
+            {
+                so.FindProperty("_damage").intValue      = 10;
+                so.FindProperty("_cooldown").floatValue  = 1.5f;
+                so.FindProperty("_range").floatValue     = 2.5f;
+                so.FindProperty("_playerLayer").intValue = playerMask;
+            });
+
+            // Save as prefab, then clean up the temp object.
+            var prefab = PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
+            UnityEngine.Object.DestroyImmediate(root);
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[CyberPulse] Seeker prefab created at {prefabPath}.");
+            return prefab;
+        }
+
+        // ──────────────────────────────────────────────────────────────────────
+        // P2 Enemy prefabs
+        // ──────────────────────────────────────────────────────────────────────
+
+        private static GameObject CreateSpherePrefab(int groundMask, int playerMask, int groundLayerIdx)
+        {
+            const string path = "Assets/CyberPulse/Prefabs/Sphere.prefab";
+            EnsureFolder("Assets/CyberPulse/Prefabs");
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (existing != null) return existing;
+
+            var root = new GameObject("Sphere_Temp");
+
+            var col = root.AddComponent<SphereCollider>();
+            col.radius = 0.5f; col.center = Vector3.zero;
+
+            var visual = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            visual.name = "Visual";
+            visual.transform.SetParent(root.transform, false);
+            UnityEngine.Object.DestroyImmediate(visual.GetComponent<SphereCollider>());
+            visual.GetComponent<MeshRenderer>().sharedMaterial = MakeWireframeMaterial();
+
+            var hitFXGO = new GameObject("HitVFX");
+            hitFXGO.transform.SetParent(root.transform, false);
+            var hitPs = hitFXGO.AddComponent<ParticleSystem>();
+            ConfigureHitVFX(hitPs);
+
+            var health  = root.AddComponent<EnemyHealth>();
+            var shards  = root.AddComponent<EnemyDeathShards>();
+            var sensor  = root.AddComponent<EnemySensor>();
+            var aerial  = root.AddComponent<EnemySphereAerial>();
+
+            LinkComponent(health, so =>
+            {
+                so.FindProperty("_maxHealth").intValue               = 80;
+                so.FindProperty("_hitVFX").objectReferenceValue      = hitPs;
+                so.FindProperty("_deathShards").objectReferenceValue = shards;
+            });
+            LinkComponent(shards, so =>
+                so.FindProperty("_enemyRenderer").objectReferenceValue = visual.GetComponent<MeshRenderer>());
+            LinkComponent(sensor, so =>
+            {
+                so.FindProperty("_detectionRange").floatValue  = 25f;
+                so.FindProperty("_fieldOfView").floatValue     = 360f;
+                so.FindProperty("_checkInterval").floatValue   = 0.2f;
+                so.FindProperty("_playerLayer").intValue       = playerMask;
+                so.FindProperty("_obstructionLayer").intValue  = groundMask;
+            });
+            LinkComponent(aerial, so =>
+                so.FindProperty("_playerLayer").intValue = playerMask);
+
+            var prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
+            UnityEngine.Object.DestroyImmediate(root);
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[CyberPulse] Sphere prefab created at {path}.");
+            return prefab;
+        }
+
+        private static GameObject CreateTrianglePrefab(int groundMask, int playerMask, int groundLayerIdx)
+        {
+            const string path = "Assets/CyberPulse/Prefabs/Triangle.prefab";
+            EnsureFolder("Assets/CyberPulse/Prefabs");
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (existing != null) return existing;
+
+            var root = new GameObject("Triangle_Temp");
+
+            var col = root.AddComponent<CapsuleCollider>();
+            col.height = 1.6f; col.radius = 0.4f; col.center = new Vector3(0, 0.8f, 0);
+
+            // Visual — cube rotated 45° to look diamond-like
+            var visual = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            visual.name = "Visual";
+            visual.transform.SetParent(root.transform, false);
+            visual.transform.localPosition = new Vector3(0f, 0.8f, 0f);
+            visual.transform.localScale    = new Vector3(0.7f, 0.7f, 0.7f);
+            visual.transform.localRotation = Quaternion.Euler(45f, 45f, 0f);
+            UnityEngine.Object.DestroyImmediate(visual.GetComponent<BoxCollider>());
+            visual.GetComponent<MeshRenderer>().sharedMaterial = MakeWireframeMaterial();
+
+            var hitFXGO = new GameObject("HitVFX");
+            hitFXGO.transform.SetParent(root.transform, false);
+            var hitPs = hitFXGO.AddComponent<ParticleSystem>();
+            ConfigureHitVFX(hitPs);
+
+            var health   = root.AddComponent<EnemyHealth>();
+            var shards   = root.AddComponent<EnemyDeathShards>();
+            var sensor   = root.AddComponent<EnemySensor>();
+            var triangle = root.AddComponent<EnemyTriangleMirror>();
+
+            LinkComponent(health, so =>
+            {
+                so.FindProperty("_maxHealth").intValue               = 60;
+                so.FindProperty("_hitVFX").objectReferenceValue      = hitPs;
+                so.FindProperty("_deathShards").objectReferenceValue = shards;
+            });
+            LinkComponent(shards, so =>
+                so.FindProperty("_enemyRenderer").objectReferenceValue = visual.GetComponent<MeshRenderer>());
+            LinkComponent(sensor, so =>
+            {
+                so.FindProperty("_detectionRange").floatValue  = 20f;
+                so.FindProperty("_fieldOfView").floatValue     = 160f;
+                so.FindProperty("_checkInterval").floatValue   = 0.15f;
+                so.FindProperty("_playerLayer").intValue       = playerMask;
+                so.FindProperty("_obstructionLayer").intValue  = groundMask;
+            });
+            LinkComponent(triangle, so =>
+                so.FindProperty("_playerLayer").intValue = playerMask);
+
+            var prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
+            UnityEngine.Object.DestroyImmediate(root);
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[CyberPulse] Triangle prefab created at {path}.");
+            return prefab;
+        }
+
+        private static GameObject CreateCylinderPrefab(int groundMask, int playerMask, int groundLayerIdx)
+        {
+            const string path = "Assets/CyberPulse/Prefabs/Cylinder.prefab";
+            EnsureFolder("Assets/CyberPulse/Prefabs");
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (existing != null) return existing;
+
+            var root = new GameObject("Cylinder_Temp");
+
+            var col = root.AddComponent<CapsuleCollider>();
+            col.height = 2f; col.radius = 0.4f; col.center = new Vector3(0, 1f, 0);
+
+            var visual = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            visual.name = "Visual";
+            visual.transform.SetParent(root.transform, false);
+            visual.transform.localPosition = new Vector3(0f, 1f, 0f);
+            visual.transform.localScale    = new Vector3(0.8f, 1f, 0.8f);
+            UnityEngine.Object.DestroyImmediate(visual.GetComponent<CapsuleCollider>());
+            visual.GetComponent<MeshRenderer>().sharedMaterial = MakeWireframeMaterial();
+
+            var hitFXGO = new GameObject("HitVFX");
+            hitFXGO.transform.SetParent(root.transform, false);
+            var hitPs = hitFXGO.AddComponent<ParticleSystem>();
+            ConfigureHitVFX(hitPs);
+
+            var health   = root.AddComponent<EnemyHealth>();
+            var shards   = root.AddComponent<EnemyDeathShards>();
+            var sensor   = root.AddComponent<EnemySensor>();
+            var launcher = root.AddComponent<EnemyCylinderLauncher>();
+
+            LinkComponent(health, so =>
+            {
+                so.FindProperty("_maxHealth").intValue               = 70;
+                so.FindProperty("_hitVFX").objectReferenceValue      = hitPs;
+                so.FindProperty("_deathShards").objectReferenceValue = shards;
+            });
+            LinkComponent(shards, so =>
+                so.FindProperty("_enemyRenderer").objectReferenceValue = visual.GetComponent<MeshRenderer>());
+            LinkComponent(sensor, so =>
+            {
+                so.FindProperty("_detectionRange").floatValue  = 22f;
+                so.FindProperty("_fieldOfView").floatValue     = 180f;
+                so.FindProperty("_checkInterval").floatValue   = 0.15f;
+                so.FindProperty("_playerLayer").intValue       = playerMask;
+                so.FindProperty("_obstructionLayer").intValue  = groundMask;
+            });
+            LinkComponent(launcher, so =>
+            {
+                so.FindProperty("_playerLayer").intValue = playerMask;
+                so.FindProperty("_groundLayer").intValue = groundMask;
+            });
+
+            var prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
+            UnityEngine.Object.DestroyImmediate(root);
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[CyberPulse] Cylinder prefab created at {path}.");
+            return prefab;
+        }
+
+        private static GameObject CreateCubePrefab(int groundMask, int playerMask, int groundLayerIdx)
+        {
+            const string path = "Assets/CyberPulse/Prefabs/Cube.prefab";
+            EnsureFolder("Assets/CyberPulse/Prefabs");
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (existing != null) return existing;
+
+            var root = new GameObject("Cube_Temp");
+
+            var col = root.AddComponent<BoxCollider>();
+            col.size = Vector3.one; col.center = new Vector3(0, 0.5f, 0);
+
+            var visual = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            visual.name = "Visual";
+            visual.transform.SetParent(root.transform, false);
+            visual.transform.localPosition = new Vector3(0f, 0.5f, 0f);
+            UnityEngine.Object.DestroyImmediate(visual.GetComponent<BoxCollider>());
+            visual.GetComponent<MeshRenderer>().sharedMaterial = MakeWireframeMaterial();
+
+            var hitFXGO = new GameObject("HitVFX");
+            hitFXGO.transform.SetParent(root.transform, false);
+            var hitPs = hitFXGO.AddComponent<ParticleSystem>();
+            ConfigureHitVFX(hitPs);
+
+            var health   = root.AddComponent<EnemyHealth>();
+            var shards   = root.AddComponent<EnemyDeathShards>();
+            var sensor   = root.AddComponent<EnemySensor>();
+            var splitter = root.AddComponent<EnemyCubeSplitter>();
+
+            LinkComponent(health, so =>
+            {
+                so.FindProperty("_maxHealth").intValue               = 100;
+                so.FindProperty("_hitVFX").objectReferenceValue      = hitPs;
+                so.FindProperty("_deathShards").objectReferenceValue = shards;
+            });
+            LinkComponent(shards, so =>
+                so.FindProperty("_enemyRenderer").objectReferenceValue = visual.GetComponent<MeshRenderer>());
+            LinkComponent(sensor, so =>
+            {
+                so.FindProperty("_detectionRange").floatValue  = 25f;
+                so.FindProperty("_fieldOfView").floatValue     = 360f;
+                so.FindProperty("_checkInterval").floatValue   = 0.2f;
+                so.FindProperty("_playerLayer").intValue       = playerMask;
+                so.FindProperty("_obstructionLayer").intValue  = groundMask;
+            });
+            LinkComponent(splitter, so =>
+                so.FindProperty("_playerLayer").intValue = playerMask);
+
+            var prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
+            UnityEngine.Object.DestroyImmediate(root);
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[CyberPulse] Cube prefab created at {path}.");
+            return prefab;
         }
 
         private static GlitchRendererFeature EnsureGlitchRendererFeature()

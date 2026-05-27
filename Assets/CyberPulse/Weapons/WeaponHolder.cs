@@ -1,5 +1,6 @@
 using UnityEngine;
 using CyberPulse.Input;
+using CyberPulse.Systems;
 
 namespace CyberPulse.Weapons
 {
@@ -18,8 +19,14 @@ namespace CyberPulse.Weapons
         [Header("Weapons")]
         [SerializeField] private WeaponBase[] _weapons;
 
-        private int _activeIndex;
-        private bool _isFiring;
+        [Header("Rhythm")]
+        [SerializeField] private float _offBeatSwitchDelay = 0.4f;
+
+        private int   _activeIndex;
+        private bool  _isFiring;
+        private bool  _switchPending;
+        private int   _pendingIndex;
+        private float _switchTimer;
 
         // ──────────────────────────────────────────────────────────────────────
         // Public state
@@ -49,6 +56,7 @@ namespace CyberPulse.Weapons
             _input.WeaponSlot1Input   += () => SwitchTo(0);
             _input.WeaponSlot2Input   += () => SwitchTo(1);
             _input.WeaponSlot3Input   += () => SwitchTo(2);
+            _input.AltFirePressed     += OnAltFirePressed;
         }
 
         private void OnDisable()
@@ -60,13 +68,26 @@ namespace CyberPulse.Weapons
             _input.WeaponSlot1Input   -= () => SwitchTo(0);
             _input.WeaponSlot2Input   -= () => SwitchTo(1);
             _input.WeaponSlot3Input   -= () => SwitchTo(2);
+            _input.AltFirePressed     -= OnAltFirePressed;
         }
 
         private void Update()
         {
-            // Auto-fire: keep calling TryFire each frame while fire is held.
+            if (_switchPending)
+            {
+                _switchTimer -= Time.deltaTime;
+                if (_switchTimer <= 0f)
+                {
+                    _switchPending = false;
+                    ExecuteSwitch(_pendingIndex);
+                }
+            }
+
             if (_isFiring && ActiveWeapon != null && ActiveWeapon.IsAutomatic)
+            {
+                WeaponBase.LastFiredWeaponSlotIndex = _activeIndex;
                 ActiveWeapon.TryFire(_cameraTransform);
+            }
         }
 
         // ──────────────────────────────────────────────────────────────────────
@@ -76,13 +97,19 @@ namespace CyberPulse.Weapons
         private void OnFirePressed()
         {
             _isFiring = true;
-            // Fire immediately on press; Update() handles auto-fire continuation.
+            WeaponBase.LastFiredWeaponSlotIndex = _activeIndex;
             ActiveWeapon?.TryFire(_cameraTransform);
         }
 
         private void OnFireReleased() => _isFiring = false;
 
         private void OnReload() => ActiveWeapon?.TryReload();
+
+        private void OnAltFirePressed()
+        {
+            if (ActiveWeapon != null)
+                SyncGauge.Instance?.TrySpend(ActiveWeapon.SpecialCost, ActiveWeapon);
+        }
 
         private void OnWeaponScroll(Vector2 scroll)
         {
@@ -101,9 +128,25 @@ namespace CyberPulse.Weapons
             if (_weapons == null || index >= _weapons.Length || index < 0) return;
             if (index == _activeIndex) return;
 
+            bool onBeat = BeatClock.Instance != null && BeatClock.Instance.IsOnBeat;
+            if (onBeat)
+            {
+                _switchPending = false;
+                ExecuteSwitch(index);
+            }
+            else
+            {
+                _switchPending = true;
+                _pendingIndex  = index;
+                _switchTimer   = _offBeatSwitchDelay;
+            }
+        }
+
+        private void ExecuteSwitch(int index)
+        {
             ActiveWeapon?.CancelReload();
             _activeIndex = index;
-            _isFiring = false;
+            _isFiring    = false;
             ActivateWeaponAt(_activeIndex, silent: false);
         }
 

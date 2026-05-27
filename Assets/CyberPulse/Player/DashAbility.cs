@@ -48,6 +48,9 @@ namespace CyberPulse.Player
         /// <summary>True when the cooldown has expired and a dash can be performed.</summary>
         public bool CanDash => _cooldownTimer <= 0f;
 
+        /// <summary>Immediately clears the cooldown. Called by BeatReactor on an on-beat dash (P1).</summary>
+        public void ResetCooldown() => _cooldownTimer = 0f;
+
         // ──────────────────────────────────────────────────────────────────────
         // Lifecycle
         // ──────────────────────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using CyberPulse.Input;
+using CyberPulse.Systems;
 
 namespace CyberPulse.Player
 {
@@ -31,6 +32,7 @@ namespace CyberPulse.Player
         [SerializeField] private int   _maxJumps = 2;
         [SerializeField] private float _coyoteTime = 0.12f;
         [SerializeField] private float _jumpBufferTime = 0.15f;
+        [SerializeField] private float _onBeatDoubleJumpMultiplier = 1.4f;  // +40% height when double-jumping on beat
 
         [Header("Ground Check")]
         [SerializeField] private LayerMask _groundLayer;
@@ -68,6 +70,12 @@ namespace CyberPulse.Player
 
         /// <summary>Set externally by <see cref="DashAbility"/> for the impulse duration.</summary>
         public bool IsDashing { get; set; }
+
+        /// <summary>
+        /// Scale applied to max horizontal speed by BeatReactor.
+        /// 1.0 = normal; 0.7 = off-rhythm penalty.
+        /// </summary>
+        public float RhythmMultiplier { get; set; } = 1f;
 
         /// <summary>Horizontal speed magnitude (XZ plane, excludes vertical).</summary>
         public float CurrentSpeed => new Vector3(_rb.linearVelocity.x, 0f, _rb.linearVelocity.z).magnitude;
@@ -191,13 +199,15 @@ namespace CyberPulse.Player
         {
             if (_jumpBufferTimer <= 0f) return;
 
-            bool coyote  = !IsGrounded && _coyoteTimer > 0f;
-            bool canJump = IsGrounded || coyote || _jumpsRemaining > 0;
+            bool coyote      = !IsGrounded && _coyoteTimer > 0f;
+            bool canJump     = IsGrounded || coyote || _jumpsRemaining > 0;
             if (!canJump) return;
+
+            bool isDoubleJump = !IsGrounded && !coyote;
 
             // For a mid-air (double) jump, zero out any downward velocity first so
             // the second jump always reaches the same height regardless of fall speed.
-            if (!IsGrounded && !coyote)
+            if (isDoubleJump)
             {
                 var v = _rb.linearVelocity;
                 if (v.y < 0f) v.y = 0f;
@@ -205,7 +215,11 @@ namespace CyberPulse.Player
             }
 
             _rb.linearDamping = _airDrag;
-            _rb.AddForce(Vector3.up * _jumpForce, ForceMode.Impulse);
+
+            // On-beat double jumps get a height bonus (+40% by default).
+            bool   beatBonus = isDoubleJump && BeatClock.Instance != null && BeatClock.Instance.IsOnBeat;
+            float  force     = _jumpForce * (beatBonus ? _onBeatDoubleJumpMultiplier : 1f);
+            _rb.AddForce(Vector3.up * force, ForceMode.Impulse);
 
             _jumpBufferTimer = 0f;
             _coyoteTimer     = 0f;
@@ -231,10 +245,11 @@ namespace CyberPulse.Player
 
         private void ClampHorizontalSpeed()
         {
-            Vector3 horizontal = new Vector3(_rb.linearVelocity.x, 0f, _rb.linearVelocity.z);
-            if (horizontal.magnitude <= _maxHorizontalSpeed) return;
+            Vector3 horizontal   = new Vector3(_rb.linearVelocity.x, 0f, _rb.linearVelocity.z);
+            float   effectiveCap = _maxHorizontalSpeed * RhythmMultiplier;
+            if (horizontal.magnitude <= effectiveCap) return;
 
-            Vector3 clamped = horizontal.normalized * _maxHorizontalSpeed;
+            Vector3 clamped = horizontal.normalized * effectiveCap;
             _rb.linearVelocity = new Vector3(clamped.x, _rb.linearVelocity.y, clamped.z);
         }
 

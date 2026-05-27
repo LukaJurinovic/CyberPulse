@@ -24,6 +24,9 @@ namespace CyberPulse.Enemy
         // The visual child so we can hide it when shards spawn.
         [SerializeField] private Renderer _enemyRenderer;
 
+        /// <summary>Wire the visual renderer at runtime (for procedurally created enemies).</summary>
+        public void SetRenderer(Renderer r) { _enemyRenderer = r; }
+
         // ── Called by EnemyHealth ─────────────────────────────────────────────
 
         public void Explode()
