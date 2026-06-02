@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &1811525779574112719
+--- !u!1 &2766766190904234506
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,9 +8,169 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1699356226234447383}
-  - component: {fileID: 8359242081954639124}
-  - component: {fileID: 6617094245351246987}
+  - component: {fileID: 8697836244095026303}
+  - component: {fileID: 1232601157033065491}
+  - component: {fileID: 2126891502127508990}
+  - component: {fileID: 2731449191560461915}
+  - component: {fileID: 6674623398068544618}
+  - component: {fileID: 1052684600194440063}
+  - component: {fileID: 6042811382580223818}
+  m_Layer: 0
+  m_Name: Cylinder
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8697836244095026303
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2766766190904234506}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 2445904650152040937}
+  - {fileID: 8188320759816341496}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!136 &1232601157033065491
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2766766190904234506}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.4
+  m_Height: 2
+  m_Direction: 1
+  m_Center: {x: 0, y: 1, z: 0}
+--- !u!114 &2126891502127508990
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2766766190904234506}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 049a06f9e18d76c4888578b1255ecc15, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CyberPulse.Enemy.EnemyHealth
+  _maxHealth: 70
+  _hitVFX: {fileID: 7685923194695537500}
+  _deathShards: {fileID: 2731449191560461915}
+--- !u!114 &2731449191560461915
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2766766190904234506}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e101089f18ff8844af52717c8ca537c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CyberPulse.Enemy.EnemyDeathShards
+  _shardCount: 14
+  _shardMinSize: 0.08
+  _shardMaxSize: 0.28
+  _explosionForce: 420
+  _explosionRadius: 2.5
+  _upwardBias: 0.6
+  _fadeDuration: 2
+  _shardColor: {r: 1, g: 0.25, b: 0.05, a: 1}
+  _shardEmissive: {r: 2, g: 0.4, b: 0.1, a: 1}
+  _enemyRenderer: {fileID: 685218639045518576}
+--- !u!114 &6674623398068544618
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2766766190904234506}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e756045ebb8c52e41a7ede4b735e4e55, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CyberPulse.Enemy.EnemySensor
+  _detectionRange: 22
+  _fieldOfView: 180
+  _playerLayer:
+    serializedVersion: 2
+    m_Bits: 512
+  _obstructionLayer:
+    serializedVersion: 2
+    m_Bits: 256
+  _checkInterval: 0.15
+--- !u!114 &1052684600194440063
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2766766190904234506}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 71abf178412159447bc054a5a3e43c2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CyberPulse.Enemy.EnemyCylinderLauncher
+  _orbitRadius: 10
+  _orbitSpeed: 45
+  _trackSpeed: 2.5
+  _fireInterval: 3
+  _missileDamage: 20
+  _missileSpeed: 6
+  _homingStrength: 1.2
+  _missileAoe: 2
+  _playerLayer:
+    serializedVersion: 2
+    m_Bits: 512
+  _groundLayer:
+    serializedVersion: 2
+    m_Bits: 256
+  _arenaBound: 27
+--- !u!114 &6042811382580223818
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2766766190904234506}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 326f741446db1e449bf149fca737b8fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CyberPulse.Enemy.EnemyStateVisual
+  _renderer: {fileID: 685218639045518576}
+--- !u!1 &7862876111111186999
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8188320759816341496}
+  - component: {fileID: 7685923194695537500}
+  - component: {fileID: 1807331990155664003}
   m_Layer: 0
   m_Name: HitVFX
   m_TagString: Untagged
@@ -18,28 +178,28 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &1699356226234447383
+--- !u!4 &8188320759816341496
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1811525779574112719}
+  m_GameObject: {fileID: 7862876111111186999}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 4336264419769935475}
+  m_Father: {fileID: 8697836244095026303}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!198 &8359242081954639124
+--- !u!198 &7685923194695537500
 ParticleSystem:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1811525779574112719}
+  m_GameObject: {fileID: 7862876111111186999}
   serializedVersion: 8
   lengthInSec: 0.1
   simulationSpeed: 1
@@ -4814,14 +4974,14 @@ ParticleSystem:
         m_PostInfinity: 2
         m_RotationOrder: 4
     vectorLabel1_3: W
---- !u!199 &6617094245351246987
+--- !u!199 &1807331990155664003
 ParticleSystemRenderer:
   serializedVersion: 7
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1811525779574112719}
+  m_GameObject: {fileID: 7862876111111186999}
   m_Enabled: 1
   m_CastShadows: 0
   m_ReceiveShadows: 0
@@ -4894,7 +5054,7 @@ ParticleSystemRenderer:
   m_MeshWeighting1: 1
   m_MeshWeighting2: 1
   m_MeshWeighting3: 1
---- !u!1 &4469608913716844274
+--- !u!1 &9129749566937782422
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -4902,154 +5062,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 4336264419769935475}
-  - component: {fileID: 8061633545083261815}
-  - component: {fileID: 7241275746373820910}
-  - component: {fileID: 985917429805875268}
-  - component: {fileID: 5833925459108565930}
-  - component: {fileID: 6081296872201273761}
-  m_Layer: 0
-  m_Name: Cylinder
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &4336264419769935475
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4469608913716844274}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 284552118927157811}
-  - {fileID: 1699356226234447383}
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!136 &8061633545083261815
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4469608913716844274}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.4
-  m_Height: 2
-  m_Direction: 1
-  m_Center: {x: 0, y: 1, z: 0}
---- !u!114 &7241275746373820910
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4469608913716844274}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 049a06f9e18d76c4888578b1255ecc15, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CyberPulse.Enemy.EnemyHealth
-  _maxHealth: 70
-  _hitVFX: {fileID: 8359242081954639124}
-  _deathShards: {fileID: 985917429805875268}
---- !u!114 &985917429805875268
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4469608913716844274}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4e101089f18ff8844af52717c8ca537c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CyberPulse.Enemy.EnemyDeathShards
-  _shardCount: 14
-  _shardMinSize: 0.08
-  _shardMaxSize: 0.28
-  _explosionForce: 420
-  _explosionRadius: 2.5
-  _upwardBias: 0.6
-  _fadeDuration: 2
-  _shardColor: {r: 1, g: 0.25, b: 0.05, a: 1}
-  _shardEmissive: {r: 2, g: 0.4, b: 0.1, a: 1}
-  _enemyRenderer: {fileID: 3777511327646806853}
---- !u!114 &5833925459108565930
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4469608913716844274}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e756045ebb8c52e41a7ede4b735e4e55, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CyberPulse.Enemy.EnemySensor
-  _detectionRange: 22
-  _fieldOfView: 180
-  _playerLayer:
-    serializedVersion: 2
-    m_Bits: 512
-  _obstructionLayer:
-    serializedVersion: 2
-    m_Bits: 256
-  _checkInterval: 0.15
---- !u!114 &6081296872201273761
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4469608913716844274}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 71abf178412159447bc054a5a3e43c2a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CyberPulse.Enemy.EnemyCylinderLauncher
-  _orbitRadius: 10
-  _orbitSpeed: 45
-  _trackSpeed: 2.5
-  _fireInterval: 3
-  _missileDamage: 20
-  _missileSpeed: 10
-  _homingStrength: 1.8
-  _missileAoe: 2
-  _playerLayer:
-    serializedVersion: 2
-    m_Bits: 512
-  _groundLayer:
-    serializedVersion: 2
-    m_Bits: 256
---- !u!1 &7167067445716389209
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 284552118927157811}
-  - component: {fileID: 6328590483207438309}
-  - component: {fileID: 3777511327646806853}
+  - component: {fileID: 2445904650152040937}
+  - component: {fileID: 7424745761613825137}
+  - component: {fileID: 685218639045518576}
   m_Layer: 0
   m_Name: Visual
   m_TagString: Untagged
@@ -5057,36 +5072,36 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &284552118927157811
+--- !u!4 &2445904650152040937
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7167067445716389209}
+  m_GameObject: {fileID: 9129749566937782422}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 1, z: 0}
   m_LocalScale: {x: 0.8, y: 1, z: 0.8}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 4336264419769935475}
+  m_Father: {fileID: 8697836244095026303}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &6328590483207438309
+--- !u!33 &7424745761613825137
 MeshFilter:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7167067445716389209}
+  m_GameObject: {fileID: 9129749566937782422}
   m_Mesh: {fileID: 10206, guid: 0000000000000000e000000000000000, type: 0}
---- !u!23 &3777511327646806853
+--- !u!23 &685218639045518576
 MeshRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7167067445716389209}
+  m_GameObject: {fileID: 9129749566937782422}
   m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1

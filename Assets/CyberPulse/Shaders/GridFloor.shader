@@ -9,6 +9,7 @@ Shader "CyberPulse/GridFloor"
         _GlowColor        ("Glow Color (HDR)", Color)                         = (0.3, 1.2, 1.2, 1)
         _EmissiveIntensity("Emissive Intensity", Float)                       = 2.5
         _GlowRadius       ("Glow Radius (world units)", Float)                = 10.0
+        _BeatBoost        ("Beat Pulse Boost", Float)                         = 5.0
     }
 
     SubShader
@@ -42,10 +43,15 @@ Shader "CyberPulse/GridFloor"
                 float4 _GlowColor;
                 float  _EmissiveIntensity;
                 float  _GlowRadius;
+                float  _BeatBoost;
             CBUFFER_END
 
             // Set every frame from GridFloorUpdater.cs via Shader.SetGlobalVector
             float4 _CyberPlayerPosition;
+
+            // Set every frame from EnvironmentAudioReactor.cs via Shader.SetGlobalFloat.
+            // 0 between beats, surges toward 1 on each beat. Defaults to 0 if no reactor present.
+            float  _CyberBeatPulse;
 
             // ── Vertex I/O ─────────────────────────────────────────────────────
             struct Attributes
@@ -90,14 +96,19 @@ Shader "CyberPulse/GridFloor"
                 // Squared falloff for a tighter, more dramatic glow
                 proximity = proximity * proximity;
 
-                // Blend grid line color from neutral to hot glow based on proximity
-                half3 lineColor = lerp(_GridColor.rgb, _GlowColor.rgb, proximity);
+                // Beat pulse — flashes the whole grid toward the hot glow colour on each beat.
+                float beat = saturate(_CyberBeatPulse);
+
+                // Blend grid line color from neutral to hot glow based on proximity OR beat.
+                half3 lineColor = lerp(_GridColor.rgb, _GlowColor.rgb, max(proximity, beat * 0.85));
 
                 // Mix base surface with grid lines
                 half3 col = lerp(_BaseColor.rgb, lineColor, lines);
 
-                // HDR emissive boost on the lines — interaction with Bloom
-                float emissiveMult = 1.0 + lines * (_EmissiveIntensity - 1.0) * (1.0 + proximity * 3.0);
+                // HDR emissive boost on the lines — interaction with Bloom. The beat term
+                // makes the lines surge brightly on each beat and fall back between them.
+                float emissiveMult = 1.0 + lines * (_EmissiveIntensity - 1.0)
+                                         * (1.0 + proximity * 3.0 + beat * _BeatBoost);
                 col *= emissiveMult;
 
                 return half4(col, 1.0);

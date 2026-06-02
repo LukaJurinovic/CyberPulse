@@ -25,10 +25,12 @@ context.md
 *.csproj
 *.unityproj
 *.sln
+*.slnx
 *.suo
 *.tmp
 *.user
 *.userprefs
+*.vsconfig
 *.pidb
 *.booproj
 *.svd

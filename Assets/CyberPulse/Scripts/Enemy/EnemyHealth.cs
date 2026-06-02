@@ -1,0 +1,82 @@
+using System;
+using UnityEngine;
+using CyberPulse.Combat;
+using CyberPulse.Systems;
+
+namespace CyberPulse.Enemy
+{
+    /// <summary>Tracks enemy hit points, implements IDamageable, fires OnDeath when depleted.</summary>
+    public class EnemyHealth : MonoBehaviour, IDamageable
+    {
+        [SerializeField] private int _maxHealth = 50;
+        [SerializeField] private ParticleSystem _hitVFX;
+        [SerializeField] private EnemyDeathShards _deathShards;
+
+        [Header("Drops")]
+        [SerializeField, Range(0f, 1f)] private float _ammoDropChance = 0.35f;
+        [SerializeField] private int _ammoDropAmount = 12;
+
+        private int _currentHealth;
+        private bool _isDead;
+
+        public bool IsDead       => _isDead;
+        public int CurrentHealth => _currentHealth;
+        public int MaxHealth     => _maxHealth;
+
+        /// <summary>Fires once when health first reaches zero.</summary>
+        public event Action OnDeath;
+
+        /// <summary>Fires each time damage is applied; parameter is the damage amount.</summary>
+        public event Action<int> OnDamageTaken;
+
+        /// <summary>Fires on any enemy's death — ScoreManager subscribes to this.</summary>
+        public static event Action OnAnyEnemyKilled;
+
+        /// <summary>Override max health before Awake runs (call on inactive GO). Safe to call before SetActive(true).</summary>
+        public void InitHealth(int hp) { _maxHealth = hp; }
+
+        private void Awake()
+        {
+            _currentHealth = _maxHealth;
+        }
+
+        private void Start()
+        {
+            TraceMeter.RegisterEnemy(this);
+        }
+
+        /// <summary>Subtract amount from health. Fires OnDamageTaken, then OnDeath if health reaches zero.</summary>
+        public void TakeDamage(int amount)
+        {
+            if (_isDead) return;
+
+            _currentHealth = Mathf.Max(0, _currentHealth - amount);
+            OnDamageTaken?.Invoke(amount);
+            _hitVFX?.Play();
+
+            if (_currentHealth == 0)
+                Die();
+        }
+
+        private void Die()
+        {
+            _isDead = true;
+
+            // Disable colliders immediately so the corpse (kept ~2s for the shard FX)
+            // doesn't keep absorbing hitscan shots — this is what made cube-splitter
+            // children seem immortal: bullets aimed at a split hit the dead parent.
+            foreach (var col in GetComponentsInChildren<Collider>())
+                col.enabled = false;
+
+            OnDeath?.Invoke();
+            OnAnyEnemyKilled?.Invoke();
+            _deathShards?.Explode();
+
+            // Chance to drop an ammo pickup the player can walk over.
+            if (_ammoDropAmount > 0 && UnityEngine.Random.value < _ammoDropChance)
+                CyberPulse.World.AmmoPickup.Spawn(transform.position, _ammoDropAmount);
+
+            Destroy(gameObject, 2f);
+        }
+    }
+}
