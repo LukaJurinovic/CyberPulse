@@ -44,18 +44,12 @@ namespace CyberPulse.Editor
         private static readonly Color MarkerColor = new Color(0.12f, 0.05f, 0.18f, 1f);
         private static readonly Color EnemyColor = new Color(0.75f, 0.15f,  0.05f, 1f);
 
-        // ── Vertical layered progression (plan Bucket B) ───────────────────────
-        private const int   LayerCount  = 3;     // ground + 2 ascents; top layer = win
-        private const float LayerHeight = 14f;   // vertical gap between stacked floors
-        private const float FloorHalf   = 26f;   // floor spans ±26 (walls sit at the edge)
-        private const float ArenaHalf   = 24f;   // matches ArenaLayer/generator spawn bounds
-        // Ascent hole carved into the NE of every upper floor; the ramp rises through it.
-        private const float HoleXMin = 14f, HoleXMax = FloorHalf;   // x ∈ [14, 26]
-        private const float HoleZMin = 8f,  HoleZMax = 20f;          // z ∈ [8, 20]
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Entry point
-        // ──────────────────────────────────────────────────────────────────────
+        private const int   LayerCount  = 3;
+        private const float LayerHeight = 14f;
+        private const float FloorHalf   = 26f;
+        private const float ArenaHalf   = 24f;
+        private const float HoleXMin = 14f, HoleXMax = FloorHalf;
+        private const float HoleZMin = 8f,  HoleZMax = 20f;
 
         [MenuItem("CyberPulse/► Build Playable Level")]
         public static void Build()
@@ -78,8 +72,6 @@ namespace CyberPulse.Editor
 
             var inputReader = GetOrCreateInputReader();
 
-            // Vertical layered progression: a stack of arenas connected by ramps + locked doors.
-            // Each layer owns its own procedural geometry, NavMesh, data nodes and exit door.
             var layers = BuildLayeredArena(groundIdx, playerMask);
             BuildLighting();
 
@@ -87,16 +79,12 @@ namespace CyberPulse.Editor
             BuildDebugUI(player);
             BuildSystems(inputReader, player, groundMask, playerMask, groundIdx, layers);
 
-            // Each ArenaLayer bakes its own NavMeshSurface at runtime once its procedural
-            // geometry is generated, so no scene-wide NavMesh bake is needed here (a single
-            // bake would wrongly fuse the stacked floors through the ramps into one mesh).
             EditorSceneManager.SaveScene(scene, ScenePath);
             AssetDatabase.Refresh();
 
             Selection.activeGameObject = player;
             SceneView.lastActiveSceneView?.FrameSelected();
 
-            // Register in Build Settings (index 1, after MainMenu) so LoadScene("PlayableTestLevel") works.
             EnsureSceneInBuildSettings(ScenePath, 1);
 
             Debug.Log("[CyberPulse] Playable level ready — press Play to test.");
@@ -115,20 +103,13 @@ namespace CyberPulse.Editor
             EditorBuildSettings.scenes = scenes.ToArray();
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Layered arena — N stacked floors connected by ramps + locked doors (Bucket B)
-        // ──────────────────────────────────────────────────────────────────────
-
         private static ArenaLayer[] BuildLayeredArena(int groundLayerIdx, int playerMask)
         {
             var layers = new ArenaLayer[LayerCount];
 
-            // 1) Each layer: floor, walls, light, generator, NavMeshSurface, data nodes.
             for (int i = 0; i < LayerCount; i++)
                 layers[i] = BuildLayer(i, groundLayerIdx, playerMask);
 
-            // 2) Connect consecutive layers with a ramp + locked door. The door belongs to the
-            //    lower layer (its exit); the top layer has none and triggers the win on clear.
             var ascent = new GameObject("Ascent");
             for (int i = 0; i < LayerCount - 1; i++)
             {
@@ -151,8 +132,6 @@ namespace CyberPulse.Editor
             BuildLayerWalls(root, floorY, groundLayerIdx);
             BuildLayerLight(root, floorY);
 
-            // Per-layer procedural geometry. The generator's runtime blocks parent under this
-            // layer, so the layer's NavMeshSurface and WorldBeatShake both pick them up.
             var genGO = new GameObject("Generator");
             genGO.transform.SetParent(root.transform, false);
             var generator = genGO.AddComponent<ProceduralArenaGenerator>();
@@ -163,16 +142,10 @@ namespace CyberPulse.Editor
                 so.FindProperty("_floorY").floatValue              = floorY;
                 so.FindProperty("_seedOffset").intValue            = index;
             });
-            // Beat-driven jitter; skip height is floor-relative so upper floors still pulse.
             var shake = genGO.AddComponent<WorldBeatShake>();
             LinkComponent(shake, so =>
                 so.FindProperty("_elevatedSkipY").floatValue = floorY + 2.5f);
 
-            // Per-layer NavMesh: Children-scoped so each stacked floor stays isolated. Bake from
-            // physics colliders, NOT render meshes — the floor/walls are BatchingStatic, so at
-            // play start Unity combines their meshes into one scene-wide "Combined Mesh" and a
-            // render-mesh bake would (3×, synchronously) voxelize the whole stack and hang.
-            // Colliders aren't batched, so a collider bake stays local and fast.
             var surface = root.AddComponent<NavMeshSurface>();
             surface.collectObjects = CollectObjects.Children;
             surface.useGeometry    = UnityEngine.AI.NavMeshCollectGeometry.PhysicsColliders;
@@ -196,7 +169,6 @@ namespace CyberPulse.Editor
         {
             var gridMat = MakeGridMaterial();
 
-            // Ground layer is solid; upper layers have an NE hole for the ascent ramp.
             if (index == 0)
             {
                 var floor = MakeStaticBox(root, "Floor",
@@ -206,7 +178,6 @@ namespace CyberPulse.Editor
                 return;
             }
 
-            // Three slabs framing the hole (x∈[14,26], z∈[8,20]).
             MakeFloorSlab(root, "Floor_W",  -FloorHalf, HoleXMin, -FloorHalf, FloorHalf, floorY, groundLayerIdx, gridMat);
             MakeFloorSlab(root, "Floor_SE",  HoleXMin,  HoleXMax, -FloorHalf, HoleZMin,  floorY, groundLayerIdx, gridMat);
             MakeFloorSlab(root, "Floor_NE",  HoleXMin,  HoleXMax,  HoleZMax,  FloorHalf, floorY, groundLayerIdx, gridMat);
@@ -253,7 +224,7 @@ namespace CyberPulse.Editor
 
         private static void BuildLayerDataNodes(GameObject root, float floorY)
         {
-            int count = UnityEngine.Random.Range(3, 5);   // 3–4 nodes per layer
+            int count = UnityEngine.Random.Range(3, 5);
             var placed = new Vector3[count];
             int n = 0;
 
@@ -262,7 +233,6 @@ namespace CyberPulse.Editor
                 float x = UnityEngine.Random.Range(-ArenaHalf, ArenaHalf);
                 float z = UnityEngine.Random.Range(-18f, ArenaHalf);
 
-                // Keep clear of the ascent-hole footprint and the south entry point.
                 if (x > HoleXMin - 1f && z > HoleZMin - 1f && z < HoleZMax + 1f) continue;
                 if (Vector2.Distance(new Vector2(x, z), new Vector2(0f, -22f)) < 7f) continue;
 
@@ -273,12 +243,9 @@ namespace CyberPulse.Editor
                 if (ok) placed[n++] = c;
             }
 
-            // First node visible; the rest start hidden and reveal one per cleared wave.
             for (int i = 0; i < n; i++)
                 CreateDataNode(root, placed[i], startHidden: i > 0);
         }
-
-        // ── Ascent: ramp + locked door between layer i and layer i+1 ───────────
 
         private static LockedDoor BuildAscent(GameObject ascentRoot, int lowerIndex, int playerMask)
         {
@@ -291,10 +258,7 @@ namespace CyberPulse.Editor
 
         private static void BuildRamp(GameObject ascentRoot, int lowerIndex, float floorYLower, float floorYUpper)
         {
-            // Rises through the upper floor's NE hole, running in z from zBot (bottom, at the
-            // lower floor) to zTop (top), landing flush with the NE floor slab so the player
-            // steps straight off onto solid ground. ~21° — gentle enough to walk up.
-            const float zBot = -16f, zTop = HoleZMax;   // 20: north edge of the hole = NE slab edge
+            const float zBot = -16f, zTop = HoleZMax;
             float rise     = floorYUpper - floorYLower;
             float run      = zTop - zBot;
             float angle    = Mathf.Atan2(rise, run) * Mathf.Rad2Deg;
@@ -307,7 +271,7 @@ namespace CyberPulse.Editor
             ramp.transform.position   = new Vector3((HoleXMin + HoleXMax) * 0.5f,
                                                     floorYLower + rise * 0.5f,
                                                     (zBot + zTop) * 0.5f);
-            ramp.transform.rotation   = Quaternion.Euler(-angle, 0f, 0f);   // +z end raised
+            ramp.transform.rotation   = Quaternion.Euler(-angle, 0f, 0f);
             ramp.transform.localScale = new Vector3(10f, 0.4f, slopeLen);
 
             var mat = new Material(UrpLit());
@@ -319,50 +283,38 @@ namespace CyberPulse.Editor
 
         private static LockedDoor BuildLockedDoor(GameObject ascentRoot, int upperIndex, float floorYUpper, int playerMask)
         {
-            float cx = (HoleXMin + HoleXMax) * 0.5f;   // 20 — hole centre x
-            float cz = (HoleZMin + HoleZMax) * 0.5f;   // 14 — hole centre z
-            float w  = HoleXMax - HoleXMin;            // 12
-            float d  = HoleZMax - HoleZMin;            // 12
-            const float plugDepth = 5f;                // deep enough to meet the ramp at the hole's south edge
+            float cx = (HoleXMin + HoleXMax) * 0.5f;
+            float cz = (HoleZMin + HoleZMax) * 0.5f;
+            float w  = HoleXMax - HoleXMin;
+            float d  = HoleZMax - HoleZMin;
+            const float plugDepth = 5f;
 
-            // Door origin at the hole centre on the upper floor.
             var go = new GameObject($"Door_to_Layer{upperIndex}");
             go.transform.SetParent(ascentRoot.transform, false);
             go.transform.position = new Vector3(cx, floorYUpper, cz);
 
-            // Pass-through trigger: on solid upper-floor ground NORTH of the shaft, at standing
-            // height. The player is below it the whole climb, so it fires only once they've
-            // stepped completely off the shaft onto the next layer — that's when the door
-            // re-seals, so it "closes only after the player is fully in" and can't trap them.
-            // Added before LockedDoor so its [RequireComponent(Collider)] reuses this collider.
             var trigger = go.AddComponent<BoxCollider>();
             trigger.isTrigger = true;
-            trigger.center    = new Vector3(0f, 1.3f, (d * 0.5f) + 3f);   // ~z 23 world, on the NE slab
+            trigger.center    = new Vector3(0f, 1.3f, (d * 0.5f) + 3f);
             trigger.size      = new Vector3(w, 3f, 6f);
 
             var door = go.AddComponent<LockedDoor>();
 
-            // The visible barrier is a thin, FLAT horizontal hatch flush with the upper floor —
-            // this is the LockedDoor _panel (red locked / hidden when open).
             var hatch = GameObject.CreatePrimitive(PrimitiveType.Cube);
             hatch.name = "Hatch";
-            UnityEngine.Object.DestroyImmediate(hatch.GetComponent<BoxCollider>());   // visual only
+            UnityEngine.Object.DestroyImmediate(hatch.GetComponent<BoxCollider>());
             hatch.transform.SetParent(go.transform, false);
-            hatch.transform.localPosition = new Vector3(0f, -0.1f, 0f);               // top ~flush at floorYUpper
+            hatch.transform.localPosition = new Vector3(0f, -0.1f, 0f);
             hatch.transform.localScale    = new Vector3(w, 0.3f, d);
             var hatchMat = new Material(UrpLit());
             hatchMat.SetColor("_BaseColor", WallColor);
             hatchMat.EnableKeyword("_EMISSION");
             hatch.GetComponent<MeshRenderer>().sharedMaterial = hatchMat;
 
-            // The blocker is an invisible deep PLUG beneath the hatch. While locked it seals the
-            // shaft (its top flush with the floor — enemies can't fall, so the layer can clear)
-            // AND stops the climbing player at its vertical SOUTH face, so the flat hatch never
-            // has to pinch the rising ramp. Disabled on unlock → the shaft opens. Collider only.
             var plugGO = new GameObject("Plug");
             plugGO.layer = LayerMask.NameToLayer(GroundLayerName);
             plugGO.transform.SetParent(go.transform, false);
-            plugGO.transform.localPosition = new Vector3(0f, -plugDepth * 0.5f, 0f);  // top flush at floorYUpper
+            plugGO.transform.localPosition = new Vector3(0f, -plugDepth * 0.5f, 0f);
             var plug = plugGO.AddComponent<BoxCollider>();
             plug.size = new Vector3(w, plugDepth, d);
 
@@ -376,10 +328,6 @@ namespace CyberPulse.Editor
             return door;
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Lighting — dark + neon cyan atmosphere
-        // ──────────────────────────────────────────────────────────────────────
-
         private static void BuildLighting()
         {
             var dirGO = new GameObject("Directional Light");
@@ -390,13 +338,7 @@ namespace CyberPulse.Editor
             dir.color     = new Color(0.85f, 0.85f, 1f);
             dir.shadows   = LightShadows.Soft;
 
-            // Per-floor cyan fill lights are added in BuildLayerLight so every stacked layer
-            // is lit; only the global directional + ambient live here.
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Player hierarchy (south spawn, facing north)
-        // ──────────────────────────────────────────────────────────────────────
 
         private static GameObject BuildPlayer(InputReader inputReader, int groundMask, int playerLayerIdx)
         {
@@ -422,17 +364,14 @@ namespace CyberPulse.Editor
             var playerStats = player.AddComponent<PlayerStats>();
             player.AddComponent<PlayerDeathHandler>();
 
-            // Trace Meter is the sole health mechanic — effective HP death requires 9999/10 = ~1000 hits.
             LinkComponent(playerStats, so =>
                 so.FindProperty("_maxHealth").intValue = 9999);
 
-            // CameraPivot at eye height
             var pivotGO = new GameObject("CameraPivot");
             pivotGO.transform.SetParent(player.transform, false);
             pivotGO.transform.localPosition = new Vector3(0f, 1.65f, 0f);
             var camScript = pivotGO.AddComponent<PlayerCamera>();
 
-            // Main camera
             var camGO = new GameObject("MainCamera");
             camGO.transform.SetParent(pivotGO.transform, false);
             camGO.transform.localPosition = Vector3.zero;
@@ -445,7 +384,6 @@ namespace CyberPulse.Editor
             camGO.AddComponent<AudioListener>();
             TryEnablePostProcessing(camGO);
 
-            // FX
             var fxRoot = new GameObject("FX");
             fxRoot.transform.SetParent(player.transform, false);
             var psGO = new GameObject("DashParticles");
@@ -453,7 +391,6 @@ namespace CyberPulse.Editor
             var dashPs = psGO.AddComponent<ParticleSystem>();
             ConfigureDashParticles(dashPs);
 
-            // Wire player scripts
             LinkComponent(controller, so =>
             {
                 so.FindProperty("_input").objectReferenceValue           = inputReader;
@@ -474,7 +411,6 @@ namespace CyberPulse.Editor
                 so.FindProperty("_camera").objectReferenceValue     = cam;
             });
 
-            // Weapon socket attached to camera
             var socketGO = new GameObject("WeaponSocket");
             socketGO.transform.SetParent(camGO.transform, false);
             socketGO.transform.localPosition = new Vector3(0.18f, -0.22f, 0.35f);
@@ -516,7 +452,6 @@ namespace CyberPulse.Editor
                 so.FindProperty("_controller").objectReferenceValue = controller;
             });
 
-            // SFX clips — loaded once, shared below.
             var sfxRevolverShot   = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Sfx/revolver_shot.mp3");
             var sfxRevolverReload = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Sfx/revolver_reload.mp3");
             var sfxShotgunShot    = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Sfx/shotgun_shot.mp3");
@@ -527,7 +462,6 @@ namespace CyberPulse.Editor
             if (sfxShotgunShot    == null) Debug.LogWarning("[CyberPulse] Assets/Audio/Sfx/shotgun_shot.mp3 not found.");
             if (sfxShotgunReload  == null) Debug.LogWarning("[CyberPulse] Assets/Audio/Sfx/shotgun_reload.mp3 not found.");
 
-            // Revolver — high-damage, slow fire rate, 6-round cylinder
             var revolverGO = new GameObject("Weapon_Revolver");
             revolverGO.transform.SetParent(socketGO.transform, false);
             revolverGO.SetActive(false);
@@ -556,7 +490,6 @@ namespace CyberPulse.Editor
                     so.FindProperty("_reloadClip").objectReferenceValue = sfxRevolverReload;
             });
 
-            // Shotgun — 8-pellet pump, 2-round mag
             var shotgunGO = new GameObject("Weapon_Shotgun");
             shotgunGO.transform.SetParent(socketGO.transform, false);
             shotgunGO.SetActive(false);
@@ -577,6 +510,7 @@ namespace CyberPulse.Editor
                 so.FindProperty("_magazineSize").intValue             = 2;
                 so.FindProperty("_reserveAmmo").intValue              = 16;
                 so.FindProperty("_reloadDuration").floatValue         = 2.0f;
+                so.FindProperty("_spreadAngle").floatValue            = 24f;
                 so.FindProperty("_muzzleFlash").objectReferenceValue  = shotgunFlashPs;
                 so.FindProperty("_audioSource").objectReferenceValue  = shotgunAudio;
                 if (sfxShotgunShot   != null)
@@ -597,15 +531,10 @@ namespace CyberPulse.Editor
                 arr.GetArrayElementAtIndex(2).objectReferenceValue = shotgun;
             });
 
-            // Grid floor proximity glow — feeds player world pos to GridFloor.shader each frame
             player.AddComponent<GridFloorUpdater>();
 
             return player;
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Debug UI
-        // ──────────────────────────────────────────────────────────────────────
 
         private static void BuildDebugUI(GameObject player)
         {
@@ -625,15 +554,10 @@ namespace CyberPulse.Editor
             });
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Enemies — 4 placed around the arena with patrol circuits
-        // ──────────────────────────────────────────────────────────────────────
-
         private static void BuildEnemies(int groundMask, int playerMask, int groundLayerIdx)
         {
             var root = new GameObject("Enemies");
 
-            // Northwest — patrols near jump platforms
             CreateEnemy("Enemy_NW", root, new Vector3(-20f, 0f, 20f), groundMask, playerMask,
                 new[]
                 {
@@ -641,7 +565,6 @@ namespace CyberPulse.Editor
                     new Vector3(-10f, 0f, 10f), new Vector3(-22f, 0f, 10f),
                 });
 
-            // Northeast — patrols open east zone
             CreateEnemy("Enemy_NE", root, new Vector3(8f, 0f, 20f), groundMask, playerMask,
                 new[]
                 {
@@ -649,7 +572,6 @@ namespace CyberPulse.Editor
                     new Vector3( 5f, 0f, 12f), new Vector3(10f, 0f, 12f),
                 });
 
-            // West side — patrols cover area
             CreateEnemy("Enemy_W", root, new Vector3(-20f, 0f, -5f), groundMask, playerMask,
                 new[]
                 {
@@ -657,7 +579,6 @@ namespace CyberPulse.Editor
                     new Vector3(-12f, 0f, -15f), new Vector3(-22f, 0f, -15f),
                 });
 
-            // Center — most aggressive, patrols across the middle
             CreateEnemy("Enemy_C", root, new Vector3(5f, 0f, 4f), groundMask, playerMask,
                 new[]
                 {
@@ -673,13 +594,11 @@ namespace CyberPulse.Editor
             enemy.transform.SetParent(parent.transform, false);
             enemy.transform.position = position;
 
-            // Collider (root)
             var col = enemy.AddComponent<CapsuleCollider>();
             col.height = 2f;
             col.radius = 0.4f;
             col.center = new Vector3(0f, 1f, 0f);
 
-            // NavMeshAgent
             var agent = enemy.AddComponent<UnityEngine.AI.NavMeshAgent>();
             agent.height          = 2f;
             agent.radius          = 0.4f;
@@ -687,7 +606,6 @@ namespace CyberPulse.Editor
             agent.acceleration    = 12f;
             agent.stoppingDistance = 0.5f;
 
-            // Visual — capsule mesh without its own collider
             var visual = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             visual.name = "Visual";
             visual.transform.SetParent(enemy.transform, false);
@@ -695,13 +613,11 @@ namespace CyberPulse.Editor
             UnityEngine.Object.DestroyImmediate(visual.GetComponent<CapsuleCollider>());
             visual.GetComponent<MeshRenderer>().sharedMaterial = MakeWireframeMaterial();
 
-            // Hit VFX
             var hitFXGO = new GameObject("HitVFX");
             hitFXGO.transform.SetParent(enemy.transform, false);
             var hitPs = hitFXGO.AddComponent<ParticleSystem>();
             ConfigureHitVFX(hitPs);
 
-            // Patrol point objects
             var patrolParent = new GameObject("PatrolPoints");
             patrolParent.transform.SetParent(enemy.transform, false);
             var patrolTransforms = new Transform[patrolPositions.Length];
@@ -713,14 +629,12 @@ namespace CyberPulse.Editor
                 patrolTransforms[i] = pt.transform;
             }
 
-            // Script components — order matters: dependencies before EnemyController
             var health     = enemy.AddComponent<EnemyHealth>();
             var shards     = enemy.AddComponent<EnemyDeathShards>();
             var sensor     = enemy.AddComponent<EnemySensor>();
             var attack     = enemy.AddComponent<EnemyAttack>();
             var controller = enemy.AddComponent<EnemyController>();
 
-            // Wire serialized fields
             LinkComponent(health, so =>
             {
                 so.FindProperty("_hitVFX").objectReferenceValue      = hitPs;
@@ -756,10 +670,6 @@ namespace CyberPulse.Editor
             });
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Game systems
-        // ──────────────────────────────────────────────────────────────────────
-
         private static void BuildSystems(InputReader inputReader, GameObject player,
             int groundMask, int playerMask, int groundLayerIdx, ArenaLayer[] layers)
         {
@@ -767,7 +677,6 @@ namespace CyberPulse.Editor
             var gameManager = go.AddComponent<GameManager>();
             go.AddComponent<DataNodeManager>();
 
-            // Vertical layered progression coordinator (Bucket B): drives door unlock + ascent.
             var layerManager = go.AddComponent<LayerManager>();
             LinkComponent(layerManager, so =>
             {
@@ -794,11 +703,7 @@ namespace CyberPulse.Editor
             var beatClock    = go.AddComponent<BeatClock>();
             go.AddComponent<SyncGauge>();
 
-            // ── Dynamic music (ambient + action stems crossfade at 50% trace) ──
-            // With a single stem both sources use the same clip; DynamicMusicPlayer
-            // syncs their playback positions to prevent phasing artefacts.
-            // Swap in a second "action" clip on _actionSrc once you have the asset.
-            AudioSource ambSrc = null;   // captured for BeatClock / WaveDirector wiring below
+            AudioSource ambSrc = null;
             var musicGuids = AssetDatabase.FindAssets("t:AudioClip", new[] { "Assets/Audio/Music" });
             AudioClip ambientClip = null, actionClip = null;
             foreach (var guid in musicGuids)
@@ -812,7 +717,6 @@ namespace CyberPulse.Editor
                 else if (ambientClip == null)
                     ambientClip = clip;
             }
-            // Single-clip fallback — both channels share the clip until a second stem exists.
             if (ambientClip == null && actionClip != null) { ambientClip = actionClip; }
             if (actionClip  == null && ambientClip != null)  actionClip  = ambientClip;
 
@@ -820,14 +724,14 @@ namespace CyberPulse.Editor
             {
                 ambSrc             = go.AddComponent<AudioSource>();
                 ambSrc.clip        = ambientClip;
-                ambSrc.playOnAwake = false;   // LoadingController starts playback after analysis
-                ambSrc.loop        = false;   // play once — WaveDirector detects end for win state
+                ambSrc.playOnAwake = false;
+                ambSrc.loop        = false;
                 ambSrc.spatialBlend = 0f;
                 ambSrc.volume      = 1f;
 
                 var actSrc         = go.AddComponent<AudioSource>();
                 actSrc.clip        = actionClip;
-                actSrc.playOnAwake = false;   // DynamicMusicPlayer starts it in sync
+                actSrc.playOnAwake = false;
                 actSrc.loop        = false;
                 actSrc.spatialBlend = 0f;
                 actSrc.volume      = 0f;
@@ -837,12 +741,10 @@ namespace CyberPulse.Editor
                 {
                     so.FindProperty("_ambientSrc").objectReferenceValue = ambSrc;
                     so.FindProperty("_actionSrc").objectReferenceValue  = actSrc;
-                    so.FindProperty("_playOnStart").boolValue           = false;  // LoadingController owns the boot
+                    so.FindProperty("_playOnStart").boolValue           = false;
                 });
                 Debug.Log($"[CyberPulse] Dynamic music wired: ambient={ambientClip.name}, action={actionClip.name}");
 
-                // Wire the same ambient source to BeatClock (beat timing) and SongAnalyzer (BPM detection).
-                // SongAnalyzer does not auto-run — LoadingController drives it after swapping in the chosen clip.
                 LinkComponent(beatClock, so =>
                     so.FindProperty("_musicSource").objectReferenceValue = ambSrc);
                 LinkComponent(songAnalyzer, so =>
@@ -851,7 +753,6 @@ namespace CyberPulse.Editor
                     so.FindProperty("_analyzeOnStart").boolValue         = false;
                 });
 
-                // ── Loading screen: analyse the chosen track, show BPM, then start ──
                 var songs   = GatherSongs();
                 var loading = go.AddComponent<LoadingController>();
                 LinkComponent(loading, so =>
@@ -875,9 +776,7 @@ namespace CyberPulse.Editor
             go.AddComponent<TimeManager>();
             go.AddComponent<CyberPulse.UI.PauseMenu>();
 
-            // Damage post-processing volume — chromatic aberration spike on hit
             var damageVol   = BuildDamageVolume();
-            // Critical volume — tightened vignette + red tint at 80% trace
             var critVol     = BuildCriticalVolume();
             var playerCamera = player.GetComponentInChildren<PlayerCamera>();
             var playerStats  = player.GetComponent<PlayerStats>();
@@ -890,7 +789,6 @@ namespace CyberPulse.Editor
                 so.FindProperty("_playerCamera").objectReferenceValue  = playerCamera;
             });
 
-            // Wire TraceMeter's critical volume, player stats, and music source (for time-scaling fill)
             LinkComponent(traceMeter, so =>
             {
                 so.FindProperty("_criticalVolume").objectReferenceValue = critVol;
@@ -899,12 +797,10 @@ namespace CyberPulse.Editor
                     so.FindProperty("_musicSource").objectReferenceValue = ambSrc;
             });
 
-            // 1000+ instanced data-bits floating around the arena
             var dataBits = go.AddComponent<DataBitRenderer>();
             LinkComponent(dataBits, so =>
                 so.FindProperty("_player").objectReferenceValue = player.transform);
 
-            // Glitch renderer feature + controller
             var glitchFeature = EnsureGlitchRendererFeature();
             var glitchCtrl    = go.AddComponent<GlitchController>();
             LinkComponent(glitchCtrl, so =>
@@ -914,8 +810,6 @@ namespace CyberPulse.Editor
                     so.FindProperty("_feature").objectReferenceValue = glitchFeature;
             });
 
-            // ── Rhythm systems ─────────────────────────────────────────────────
-            // WaveDirector: song-driven enemy wave spawner.
             var waveDirector   = go.AddComponent<WaveDirector>();
             var seekerPrefab   = CreateSeekerPrefab(groundMask, playerMask, groundLayerIdx);
             var spherePrefab   = CreateSpherePrefab(groundMask, playerMask, groundLayerIdx);
@@ -926,7 +820,7 @@ namespace CyberPulse.Editor
             {
                 if (ambSrc != null)
                     so.FindProperty("_musicSource").objectReferenceValue = ambSrc;
-                so.FindProperty("_obstacleMask").intValue = groundMask;  // aerial spawns avoid arena geometry
+                so.FindProperty("_obstacleMask").intValue = groundMask;
                 if (seekerPrefab   != null) so.FindProperty("_seekerPrefab").objectReferenceValue   = seekerPrefab;
                 if (spherePrefab   != null) so.FindProperty("_spherePrefab").objectReferenceValue   = spherePrefab;
                 if (trianglePrefab != null) so.FindProperty("_trianglePrefab").objectReferenceValue = trianglePrefab;
@@ -934,7 +828,6 @@ namespace CyberPulse.Editor
                 if (cubePrefab     != null) so.FindProperty("_cubePrefab").objectReferenceValue     = cubePrefab;
             });
 
-            // BeatReactor: links player state to BeatClock (damage bonuses, SYNC, penalties).
             var dash        = player.GetComponent<DashAbility>();
             var controller  = player.GetComponent<PlayerController>();
             var beatReactor = go.AddComponent<BeatReactor>();
@@ -947,10 +840,6 @@ namespace CyberPulse.Editor
             });
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Seeker prefab — used by WaveDirector for procedural wave spawning
-        // ──────────────────────────────────────────────────────────────────────
-
         /// <summary>
         /// Creates (or reuses) a Seeker enemy prefab at Assets/CyberPulse/Prefabs/Seeker.prefab.
         /// The prefab has no patrol points so spawned seekers idle in place until they
@@ -961,11 +850,9 @@ namespace CyberPulse.Editor
             const string prefabPath = "Assets/CyberPulse/Prefabs/Seeker.prefab";
             EnsureFolder("Assets/CyberPulse/Prefabs");
 
-            // Reuse an existing prefab so rebuilding the scene doesn't duplicate assets.
             var existing = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
             if (existing != null) return existing;
 
-            // Build a temporary scene object to extract to a prefab.
             var root = new GameObject("Seeker_Temp");
 
             var col = root.AddComponent<CapsuleCollider>();
@@ -1010,37 +897,32 @@ namespace CyberPulse.Editor
                 so.FindProperty("_enemyRenderer").objectReferenceValue = visual.GetComponent<MeshRenderer>());
             LinkComponent(sensor, so =>
             {
-                so.FindProperty("_detectionRange").floatValue  = 26f;   // spots player from further
-                so.FindProperty("_fieldOfView").floatValue     = 220f;  // wide peripheral awareness
-                so.FindProperty("_checkInterval").floatValue   = 0.08f; // reacts faster
+                so.FindProperty("_detectionRange").floatValue  = 26f;
+                so.FindProperty("_fieldOfView").floatValue     = 220f;
+                so.FindProperty("_checkInterval").floatValue   = 0.08f;
                 so.FindProperty("_playerLayer").intValue       = playerMask;
                 so.FindProperty("_obstructionLayer").intValue  = groundMask;
             });
             LinkComponent(attack, so =>
             {
-                so.FindProperty("_damage").intValue      = 15;   // hits harder
-                so.FindProperty("_cooldown").floatValue  = 0.9f; // attacks faster
+                so.FindProperty("_damage").intValue      = 15;
+                so.FindProperty("_cooldown").floatValue  = 0.9f;
                 so.FindProperty("_range").floatValue     = 2.8f;
                 so.FindProperty("_playerLayer").intValue = playerMask;
             });
             LinkComponent(controller, so =>
             {
-                so.FindProperty("_chaseSpeed").floatValue    = 7f;   // aggressive pursuit
+                so.FindProperty("_chaseSpeed").floatValue    = 7f;
                 so.FindProperty("_attackRange").floatValue   = 2.8f;
-                so.FindProperty("_patrolWaitTime").floatValue = 0.5f; // barely pauses
+                so.FindProperty("_patrolWaitTime").floatValue = 0.5f;
             });
 
-            // Save as prefab, then clean up the temp object.
             var prefab = PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
             UnityEngine.Object.DestroyImmediate(root);
             AssetDatabase.SaveAssets();
             Debug.Log($"[CyberPulse] Seeker prefab created at {prefabPath}.");
             return prefab;
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // P2 Enemy prefabs
-        // ──────────────────────────────────────────────────────────────────────
 
         private static GameObject CreateSpherePrefab(int groundMask, int playerMask, int groundLayerIdx)
         {
@@ -1111,7 +993,6 @@ namespace CyberPulse.Editor
             var col = root.AddComponent<CapsuleCollider>();
             col.height = 1.6f; col.radius = 0.4f; col.center = new Vector3(0, 0.8f, 0);
 
-            // Visual — cube rotated 45° to look diamond-like
             var visual = GameObject.CreatePrimitive(PrimitiveType.Cube);
             visual.name = "Visual";
             visual.transform.SetParent(root.transform, false);
@@ -1282,7 +1163,6 @@ namespace CyberPulse.Editor
 
         private static GlitchRendererFeature EnsureGlitchRendererFeature()
         {
-            // Find the active UniversalRendererData asset
             var guids = AssetDatabase.FindAssets("t:UniversalRendererData");
             UniversalRendererData rendererData = null;
             foreach (var guid in guids)
@@ -1298,7 +1178,6 @@ namespace CyberPulse.Editor
                 return null;
             }
 
-            // Reuse existing feature if already present
             foreach (var f in rendererData.rendererFeatures)
             {
                 if (f is GlitchRendererFeature existing)
@@ -1308,7 +1187,6 @@ namespace CyberPulse.Editor
                 }
             }
 
-            // Create and add the feature
             var feature  = ScriptableObject.CreateInstance<GlitchRendererFeature>();
             feature.name = "CyberPulse_GlitchEffect";
             EnsureGlitchMaterial(feature, rendererData);
@@ -1368,19 +1246,16 @@ namespace CyberPulse.Editor
 
             var profile = ScriptableObject.CreateInstance<VolumeProfile>();
 
-            // Tighter vignette — increases perceived danger
             var vignette = profile.Add<Vignette>();
             vignette.active = true;
             vignette.intensity.Override(0.55f);
             vignette.smoothness.Override(0.4f);
             vignette.color.Override(new Color(0.8f, 0.1f, 0.05f));
 
-            // Persistent mild chromatic aberration (distinct from the damage spike)
             var ca = profile.Add<ChromaticAberration>();
             ca.active = true;
             ca.intensity.Override(0.35f);
 
-            // Desaturate + red tint — world feels corrupt / hostile
             var colorAdj = profile.Add<ColorAdjustments>();
             colorAdj.active = true;
             colorAdj.colorFilter.Override(new Color(1f, 0.7f, 0.65f));
@@ -1404,7 +1279,6 @@ namespace CyberPulse.Editor
             ca.active = true;
             ca.intensity.Override(0.85f);
 
-            // Subtle red-tint + saturation boost for the hit flash feel
             var colorAdj = profile.Add<ColorAdjustments>();
             colorAdj.active = true;
             colorAdj.colorFilter.Override(new Color(1f, 0.6f, 0.6f));
@@ -1414,17 +1288,12 @@ namespace CyberPulse.Editor
             return vol;
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Data nodes — siphon targets, placed per layer (some start hidden)
-        // ──────────────────────────────────────────────────────────────────────
-
         private static void CreateDataNode(GameObject parent, Vector3 position, bool startHidden)
         {
             var go = new GameObject("DataNode");
             go.transform.SetParent(parent.transform, false);
             go.transform.position = position;
 
-            // Visual — sphere
             var visual = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             visual.name = "Visual";
             visual.transform.SetParent(go.transform, false);
@@ -1437,11 +1306,9 @@ namespace CyberPulse.Editor
             mat.EnableKeyword("_EMISSION");
             visual.GetComponent<MeshRenderer>().sharedMaterial = mat;
 
-            // Collider on root (hit target for raycasts)
             var col = go.AddComponent<SphereCollider>();
             col.radius = 0.35f;
 
-            // Point light for glow
             var lightGO = new GameObject("NodeLight");
             lightGO.transform.SetParent(go.transform, false);
             var lt = lightGO.AddComponent<Light>();
@@ -1451,13 +1318,11 @@ namespace CyberPulse.Editor
             lt.range     = 4f;
             lt.shadows   = LightShadows.None;
 
-            // Activate VFX — small burst
             var vfxGO = new GameObject("ActivateVFX");
             vfxGO.transform.SetParent(go.transform, false);
             var ps = vfxGO.AddComponent<ParticleSystem>();
             ConfigureNodeVFX(ps);
 
-            // DataNode script
             var node = go.AddComponent<DataNode>();
             LinkComponent(node, so =>
             {
@@ -1495,10 +1360,6 @@ namespace CyberPulse.Editor
                 MakeParticleMaterial(new Color(0f, 1f, 0.4f));
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // NavMesh baking
-        // ──────────────────────────────────────────────────────────────────────
-
         private static void BakeNavMesh()
         {
             try
@@ -1514,10 +1375,6 @@ namespace CyberPulse.Editor
                     " — open Window > AI > Navigation and click Bake manually.");
             }
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Particle systems
-        // ──────────────────────────────────────────────────────────────────────
 
         private static void ConfigureDashParticles(ParticleSystem ps)
         {
@@ -1614,17 +1471,12 @@ namespace CyberPulse.Editor
             ps.GetComponent<ParticleSystemRenderer>().sharedMaterial = MakeParticleMaterial(new Color(1f, 0.3f, 0f));
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Material helpers
-        // ──────────────────────────────────────────────────────────────────────
-
         private static Material MakeGridMaterial()
         {
             var gridShader = Shader.Find("CyberPulse/GridFloor");
             if (gridShader != null)
             {
                 var mat = new Material(gridShader) { name = "M_Grid_HLSL" };
-                // World-space grid: 1 cell per unit, line width 4% of cell
                 mat.SetFloat("_GridScale",         1f);
                 mat.SetFloat("_LineWidth",         0.04f);
                 mat.SetColor("_BaseColor",         DarkFloor);
@@ -1635,7 +1487,6 @@ namespace CyberPulse.Editor
                 return mat;
             }
 
-            // Fallback to texture-based grid if shader not yet compiled
             Debug.LogWarning("[CyberPulse] CyberPulse/GridFloor shader not found — using fallback material.");
             var fallback = new Material(UrpLit()) { name = "M_Grid" };
             var tex  = MakeGridTex(512, 32, DarkFloor, new Color(0f, 0.96f, 1f, 0.4f));
@@ -1656,7 +1507,7 @@ namespace CyberPulse.Editor
             if (wireShader != null)
             {
                 var mat = new Material(wireShader) { name = "M_Enemy_Wireframe" };
-                mat.SetColor("_EdgeColor",     new Color(2.4f, 0.4f, 0.05f, 1f));  // HDR orange-red
+                mat.SetColor("_EdgeColor",     new Color(2.4f, 0.4f, 0.05f, 1f));
                 mat.SetColor("_FillColor",     new Color(0.08f, 0.01f, 0.01f, 1f));
                 mat.SetFloat("_FresnelPower",  3.5f);
                 mat.SetFloat("_EdgeWidth",     0.55f);
@@ -1674,7 +1525,6 @@ namespace CyberPulse.Editor
         {
             var mat = new Material(UrpLit()) { name = "M_Wall_Emissive" };
             mat.SetColor("_BaseColor",     WallColor);
-            // Start with a very dim emissive — AudioReactor will boost it at runtime
             mat.SetColor("_EmissionColor", new Color(0.04f, 0.05f, 0.10f));
             mat.EnableKeyword("_EMISSION");
             return mat;
@@ -1715,10 +1565,6 @@ namespace CyberPulse.Editor
             return tex;
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Primitive helpers
-        // ──────────────────────────────────────────────────────────────────────
-
         private static GameObject MakeStaticBox(GameObject parent, string name,
             Vector3 localPos, Vector3 size, Color color, int layer)
         {
@@ -1737,10 +1583,6 @@ namespace CyberPulse.Editor
 #pragma warning restore CS0618
             return go;
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Layer & folder utilities
-        // ──────────────────────────────────────────────────────────────────────
 
         private static int EnsureLayer(string name)
         {
@@ -1772,10 +1614,6 @@ namespace CyberPulse.Editor
             AssetDatabase.CreateFolder(path[..slash], path[(slash + 1)..]);
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Serialized-field wiring helper
-        // ──────────────────────────────────────────────────────────────────────
-
         private static void LinkComponent<T>(T component, Action<SerializedObject> assign)
             where T : UnityEngine.Object
         {
@@ -1804,10 +1642,6 @@ namespace CyberPulse.Editor
             return list.ToArray();
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // InputReader ScriptableObject
-        // ──────────────────────────────────────────────────────────────────────
-
         private static InputReader GetOrCreateInputReader()
         {
             var existing = AssetDatabase.LoadAssetAtPath<InputReader>(InputReaderPath);
@@ -1819,10 +1653,6 @@ namespace CyberPulse.Editor
             Debug.Log($"[CyberPulse] InputReader asset created at {InputReaderPath}.");
             return reader;
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // URP post-processing — via reflection to avoid hard package dependency
-        // ──────────────────────────────────────────────────────────────────────
 
         private static void TryEnablePostProcessing(GameObject cameraGO)
         {

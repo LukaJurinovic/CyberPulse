@@ -62,9 +62,6 @@ namespace CyberPulse.Enemy
         {
             _isDead = true;
 
-            // Disable colliders immediately so the corpse (kept ~2s for the shard FX)
-            // doesn't keep absorbing hitscan shots — this is what made cube-splitter
-            // children seem immortal: bullets aimed at a split hit the dead parent.
             foreach (var col in GetComponentsInChildren<Collider>())
                 col.enabled = false;
 
@@ -72,7 +69,6 @@ namespace CyberPulse.Enemy
             OnAnyEnemyKilled?.Invoke();
             _deathShards?.Explode();
 
-            // Chance to drop an ammo pickup the player can walk over.
             if (_ammoDropAmount > 0 && UnityEngine.Random.value < _ammoDropChance)
                 CyberPulse.World.AmmoPickup.Spawn(transform.position, _ammoDropAmount);
 

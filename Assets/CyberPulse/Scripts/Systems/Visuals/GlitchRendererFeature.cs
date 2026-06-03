@@ -35,13 +35,10 @@ namespace CyberPulse.Systems
         public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
         {
             if (material == null) return;
-            // Skip the pass when effect is invisible — saves a blit
             if (material.GetFloat(GlitchStrengthID) < 0.001f) return;
             _pass.SetMaterial(material);
             renderer.EnqueuePass(_pass);
         }
-
-        // ── Inner pass ────────────────────────────────────────────────────────
 
         private sealed class GlitchPass : ScriptableRenderPass
         {
@@ -66,13 +63,10 @@ namespace CyberPulse.Systems
 
                 var resourceData = frameData.Get<UniversalResourceData>();
 
-                // Can't read from the backbuffer directly; requiresIntermediateTexture
-                // forces URP to use an intermediate RT, so this guard is just a safety net.
                 if (resourceData.isActiveTargetBackBuffer) return;
 
                 var src  = resourceData.activeColorTexture;
 
-                // Create a temp texture with the same descriptor as the source
                 var desc     = renderGraph.GetTextureDesc(src);
                 desc.name    = "_GlitchTemp";
                 desc.clearBuffer = false;
@@ -82,14 +76,13 @@ namespace CyberPulse.Systems
                 pd.source   = src;
                 pd.material = _mat;
 
-                builder.UseTexture(src);                     // read
-                builder.SetRenderAttachment(dst, 0);         // write to temp
+                builder.UseTexture(src);
+                builder.SetRenderAttachment(dst, 0);
                 builder.AllowPassCulling(false);
 
                 builder.SetRenderFunc(static (PassData d, RasterGraphContext ctx) =>
                     Blitter.BlitTexture(ctx.cmd, d.source, new Vector4(1, 1, 0, 0), d.material, 0));
 
-                // Redirect subsequent passes to use our processed texture
                 resourceData.cameraColor = dst;
             }
         }

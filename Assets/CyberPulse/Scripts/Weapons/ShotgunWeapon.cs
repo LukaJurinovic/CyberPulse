@@ -7,8 +7,8 @@ using CyberPulse.Systems;
 namespace CyberPulse.Weapons
 {
     /// <summary>
-    /// 8-pellet pump shotgun. Off-beat: wide 12° spread. On-beat: spread tightens
-    /// to 60% (4.8°) for a precision blast. 2-round pump mag; rewards close-quarters
+    /// 8-pellet pump shotgun. Off-beat: wide 24° spread. On-beat: spread tightens
+    /// to 40% (9.6°) for a precision blast. 2-round pump mag; rewards close-quarters
     /// aggression synced to the beat.
     /// Special: wide blast (30° cone, 16 rays) that knocks enemies back and hops the player upward.
     /// </summary>
@@ -17,8 +17,8 @@ namespace CyberPulse.Weapons
         [Header("Shotgun")]
         [SerializeField] private int   _pelletsPerShot   = 8;
         [SerializeField] private int   _damagePerPellet  = 15;
-        [SerializeField] private float _spreadAngle      = 12f;
-        [SerializeField] private float _onBeatSpreadMult = 0.4f;  // 1 - 0.6 tighten = 40% of base
+        [SerializeField] private float _spreadAngle      = 24f;
+        [SerializeField] private float _onBeatSpreadMult = 0.4f;
         [SerializeField] private float _range            = 60f;
         [SerializeField] private LayerMask _hitMask      = ~0;
 
@@ -48,8 +48,6 @@ namespace CyberPulse.Weapons
             }
         }
 
-        // ── Knockdown special: wide blast + enemy knockback + player hop ──
-
         public override void TriggerSpecial()
         {
             if (_lastCameraTransform == null) return;
@@ -72,7 +70,6 @@ namespace CyberPulse.Weapons
                 if (shield == null || !shield.TryDeflect(ray, hit, _damagePerPellet))
                     hit.collider.GetComponentInParent<IDamageable>()?.TakeDamage(_damagePerPellet);
 
-                // Knockback — add receiver lazily so enemies don't require the component pre-attached.
                 var kb = hit.collider.GetComponentInParent<KnockbackReceiver>();
                 if (kb == null)
                 {
@@ -89,7 +86,6 @@ namespace CyberPulse.Weapons
                 }
             }
 
-            // Recoil hop — push player upward for a small airborne hop.
             var rb = GetComponentInParent<Rigidbody>();
             if (rb != null)
                 rb.AddForce(Vector3.up * _playerHopForce, ForceMode.Impulse);

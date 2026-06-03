@@ -28,11 +28,11 @@ namespace CyberPulse.Player
         [SerializeField] private float _airDrag = 0.5f;
 
         [Header("Jump")]
-        [SerializeField] private float _jumpForce = 6.26f; // sqrt(2 * 9.81 * 2m) — peak height formula (mass = 1)
+        [SerializeField] private float _jumpForce = 6.26f;
         [SerializeField] private int   _maxJumps = 2;
         [SerializeField] private float _coyoteTime = 0.12f;
         [SerializeField] private float _jumpBufferTime = 0.15f;
-        [SerializeField] private float _onBeatDoubleJumpMultiplier = 1.4f;  // +40% height when double-jumping on beat
+        [SerializeField] private float _onBeatDoubleJumpMultiplier = 1.4f;
 
         [Header("Ground Check")]
         [SerializeField] private LayerMask _groundLayer;
@@ -54,13 +54,8 @@ namespace CyberPulse.Player
         private int _jumpsRemaining;
         private float _lastLandTime;
 
-        // Four cardinal directions pre-allocated to avoid per-frame allocation.
         private static readonly Vector3[] WallDirs =
             { Vector3.forward, Vector3.back, Vector3.left, Vector3.right };
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Public state (read-only properties)
-        // ──────────────────────────────────────────────────────────────────────
 
         /// <summary>True when the player is standing on a Ground-layer surface.</summary>
         public bool IsGrounded { get; private set; }
@@ -101,10 +96,6 @@ namespace CyberPulse.Player
         /// <summary>Fires on the frame the player's feet touch a Ground-layer surface.</summary>
         public event Action OnLanded;
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Lifecycle
-        // ──────────────────────────────────────────────────────────────────────
-
         private void Awake()
         {
             _rb = GetComponent<Rigidbody>();
@@ -128,13 +119,11 @@ namespace CyberPulse.Player
 
         private void HandleJumpRequest()
         {
-            // Store a request; TryJump() consumes it in FixedUpdate.
             _jumpBufferTimer = _jumpBufferTime;
         }
 
         private void Update()
         {
-            // Timers tick in Update for sub-frame responsiveness.
             if (_jumpBufferTimer > 0f) _jumpBufferTimer -= Time.deltaTime;
             if (!IsGrounded && _coyoteTimer > 0f) _coyoteTimer -= Time.deltaTime;
         }
@@ -149,13 +138,8 @@ namespace CyberPulse.Player
             ApplyVariableGravity();
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Ground detection
-        // ──────────────────────────────────────────────────────────────────────
-
         private void UpdateGroundState()
         {
-            // Origin = centre of the capsule's bottom hemisphere.
             Vector3 origin = transform.position
                 + _col.center
                 + Vector3.down * (_col.height * 0.5f - _col.radius);
@@ -174,8 +158,6 @@ namespace CyberPulse.Player
                 _rb.linearDamping = _groundDrag;
                 _jumpsRemaining = _maxJumps;
 
-                // Only fire OnLanded when actually falling — Rigidbody jitter on flat surfaces
-                // produces tiny negative Y velocities that would spam the landing dip otherwise.
                 if (_rb.linearVelocity.y < -1.5f)
                 {
                     _lastLandTime = Time.time;
@@ -191,10 +173,6 @@ namespace CyberPulse.Player
             IsGrounded = nowGrounded;
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Jump
-        // ──────────────────────────────────────────────────────────────────────
-
         private void TryJump()
         {
             if (_jumpBufferTimer <= 0f) return;
@@ -205,8 +183,6 @@ namespace CyberPulse.Player
 
             bool isDoubleJump = !IsGrounded && !coyote;
 
-            // For a mid-air (double) jump, zero out any downward velocity first so
-            // the second jump always reaches the same height regardless of fall speed.
             if (isDoubleJump)
             {
                 var v = _rb.linearVelocity;
@@ -216,7 +192,6 @@ namespace CyberPulse.Player
 
             _rb.linearDamping = _airDrag;
 
-            // On-beat double jumps get a height bonus (+40% by default).
             bool   beatBonus = isDoubleJump && BeatClock.Instance != null && BeatClock.Instance.IsOnBeat;
             float  force     = _jumpForce * (beatBonus ? _onBeatDoubleJumpMultiplier : 1f);
             _rb.AddForce(Vector3.up * force, ForceMode.Impulse);
@@ -228,10 +203,6 @@ namespace CyberPulse.Player
             if (_jumpsRemaining > 0)
                 _jumpsRemaining--;
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Horizontal movement
-        // ──────────────────────────────────────────────────────────────────────
 
         private void ApplyMovement()
         {
@@ -253,22 +224,13 @@ namespace CyberPulse.Player
             _rb.linearVelocity = new Vector3(clamped.x, _rb.linearVelocity.y, clamped.z);
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Variable gravity — heavier fall for a punchy Doom/Ultrakill jump arc
-        // ──────────────────────────────────────────────────────────────────────
-
         private void ApplyVariableGravity()
         {
-            // Only kick in while airborne and falling.
             if (IsGrounded || _rb.linearVelocity.y >= 0f) return;
 
             float extra = Physics.gravity.magnitude * (_fallGravityMultiplier - 1f);
             _rb.AddForce(Vector3.down * extra, ForceMode.Acceleration);
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Wall slide
-        // ──────────────────────────────────────────────────────────────────────
 
         private void UpdateWallSlide()
         {
@@ -278,7 +240,6 @@ namespace CyberPulse.Player
                 return;
             }
 
-            // Cast from hip height (capsule centre) in four cardinal directions.
             Vector3 hipPos = transform.position + _col.center;
             bool touchingWall = false;
 

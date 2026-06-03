@@ -3,12 +3,12 @@ namespace CyberPulse.Systems
     public struct SongProfile
     {
         public float   BPM;
-        public float   BeatInterval;     // 60f / BPM
-        public float   Duration;         // seconds
-        public float   AverageEnergy;    // 0-1
-        public float   EnergyVariance;   // stddev of timeline energies
-        public float[] EnergyTimeline;   // RMS sampled every 0.5s
-        public float   PeakEnergy;       // maximum energy seen
+        public float   BeatInterval;
+        public float   Duration;
+        public float   AverageEnergy;
+        public float   EnergyVariance;
+        public float[] EnergyTimeline;
+        public float   PeakEnergy;
 
         public static SongProfile Fallback(float duration) => new SongProfile
         {

@@ -36,11 +36,9 @@ namespace CyberPulse.UI
             float sw = Screen.width;
             float sh = Screen.height;
 
-            // Fade in over 0.4 s
             float alpha = _activatedAt < 0f ? 1f
                 : Mathf.Clamp01((Time.unscaledTime - _activatedAt) / 0.4f);
 
-            // Background
             GUI.color = new Color(_bgColor.r, _bgColor.g, _bgColor.b, _bgColor.a * alpha);
             GUI.DrawTexture(new Rect(0, 0, sw, sh), _pixel);
             GUI.color = Color.white;
@@ -49,17 +47,15 @@ namespace CyberPulse.UI
 
             float cy = sh * 0.40f;
 
-            // Headline — gentle pulse once fully visible
             float pulse = alpha >= 1f ? 0.85f + 0.15f * Mathf.Sin(Time.unscaledTime * 2.5f) : alpha;
             _headStyle.normal.textColor = new Color(
                 _headlineColor.r, _headlineColor.g, _headlineColor.b, pulse);
             GUI.Label(new Rect(sw * 0.5f - 240f, cy, 480f, 90f), _headline, _headStyle);
 
-            if (alpha < 0.6f) return;   // wait before showing sub-text
+            if (alpha < 0.6f) return;
 
             float sub = Mathf.Clamp01((alpha - 0.6f) / 0.4f);
 
-            // Score
             var sm = ScoreManager.Instance;
             if (sm != null)
             {
@@ -68,7 +64,6 @@ namespace CyberPulse.UI
                     $"SCORE  {sm.Score:D6}", _subStyle);
             }
 
-            // Restart hint
             _hintStyle.normal.textColor = new Color(0.55f, 0.65f, 0.75f, sub * 0.85f);
             GUI.Label(new Rect(sw * 0.5f - 120f, cy + 140f, 240f, 24f),
                 "Restarting...", _hintStyle);

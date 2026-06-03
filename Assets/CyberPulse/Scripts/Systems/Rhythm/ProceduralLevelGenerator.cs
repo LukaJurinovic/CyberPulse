@@ -7,10 +7,10 @@ namespace CyberPulse.Systems
 
     public struct WaveDefinition
     {
-        public float       SpawnTime;        // seconds into the song
-        public EnemyType[] EnemyTypes;       // type per enemy slot
+        public float       SpawnTime;
+        public EnemyType[] EnemyTypes;
         public int         Count;
-        public Vector3[]   SpawnPositions;   // world-space, y on floor
+        public Vector3[]   SpawnPositions;
     }
 
     /// <summary>
@@ -20,22 +20,16 @@ namespace CyberPulse.Systems
     public static class ProceduralLevelGenerator
     {
 
-        // ── Entry point ───────────────────────────────────────────────────────
-
         public static WaveDefinition[] Generate(SongProfile profile)
         {
             bool hasTimeline = profile.EnergyTimeline != null && profile.EnergyTimeline.Length > 0;
             if (!hasTimeline)
                 return Fallback(profile.Duration);
 
-            // Find high-energy peaks in the timeline to use as wave trigger times.
             var peakTimes = FindPeaks(profile.EnergyTimeline, profile.Duration);
 
-            // Clamp target wave count: ~1 wave per 20s, 2-10 total.
             int maxWaves = Mathf.Clamp(Mathf.RoundToInt(profile.Duration / 20f), 2, 10);
 
-            // When more peaks than slots: spread-select so waves are distributed across the
-            // whole song rather than just front-loaded on the first N peaks.
             if (peakTimes.Count > maxWaves)
             {
                 var spread = new List<float>(maxWaves);
@@ -48,8 +42,6 @@ namespace CyberPulse.Systems
             if (peakTimes.Count == 0)
                 return Fallback(profile.Duration);
 
-            // Gap-fill: insert a trickle wave at the midpoint of any gap > 25s, including
-            // the stretch from the last wave to near the end of the song.
             const float maxGap = 25f;
             int gi = 1;
             while (gi < peakTimes.Count)
@@ -59,19 +51,14 @@ namespace CyberPulse.Systems
                 else
                     gi++;
             }
-            // Tail: keep appending waves every maxGap seconds until we're within 10s of the end.
             while (profile.Duration - peakTimes[peakTimes.Count - 1] > maxGap)
                 peakTimes.Add(peakTimes[peakTimes.Count - 1] + maxGap);
 
-            // Enemies per wave: 3-8 base, scaled by energy, escalating toward end of song.
             int baseCount = Mathf.Clamp(Mathf.RoundToInt(3f + profile.AverageEnergy * 6f), 3, 8);
 
             var waves = new WaveDefinition[peakTimes.Count];
             for (int i = 0; i < peakTimes.Count; i++)
             {
-                // Normalize progress against full song duration so early waves reliably
-                // have low progress and late waves reliably have high progress, regardless
-                // of how many peaks are found or where the last one lands.
                 float progress    = profile.Duration > 0f ? peakTimes[i] / profile.Duration : 0f;
                 int   count       = Mathf.Clamp(baseCount + Mathf.RoundToInt(progress * 4f), 3, 12);
                 EnemyType[] avail = AvailableTypes(progress);
@@ -89,8 +76,6 @@ namespace CyberPulse.Systems
                       $"first={peakTimes[0]:F0}s, last={peakTimes[peakTimes.Count-1]:F0}s).");
             return waves;
         }
-
-        // ── Helpers ───────────────────────────────────────────────────────────
 
         /// <summary>
         /// Finds local energy maxima that exceed 60% of peak energy, spaced at least 8s apart.
@@ -112,7 +97,6 @@ namespace CyberPulse.Systems
                     raw.Add(i * tickInterval);
             }
 
-            // Enforce minimum gap and ignore very early triggers.
             var filtered = new List<float>();
             float lastTime = -100f;
             foreach (float t in raw)
@@ -148,10 +132,6 @@ namespace CyberPulse.Systems
             return waves;
         }
 
-        // Types unlock early so waves are mixed from the start:
-        //   always          → Seeker + TriangleMirror
-        //   progress >= 0.2 → + CylinderLauncher
-        //   progress >= 0.4 → + SphereAerial + CubeSplitter
         private static EnemyType[] AvailableTypes(float songProgress)
         {
             var types = new List<EnemyType> { EnemyType.Seeker, EnemyType.TriangleMirror };
@@ -170,8 +150,6 @@ namespace CyberPulse.Systems
 
         private static Vector3[] PickSpawnPositions(int count)
         {
-            // Distribute enemies evenly around the arena at random radii.
-            // Random start angle means each wave arrives from a different direction.
             float step       = (Mathf.PI * 2f) / count;
             float startAngle = Random.Range(0f, Mathf.PI * 2f);
             var   positions  = new Vector3[count];

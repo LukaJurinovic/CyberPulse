@@ -56,22 +56,16 @@ namespace CyberPulse.Player
         private Coroutine _kickbackCoroutine;
         private Coroutine _landingDipCoroutine;
 
-        // Screen shake
         private float _shakeIntensity;
         private float _shakeDuration;
         private float _shakeTimer;
         private Vector2 _shakeOffset;
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Lifecycle
-        // ──────────────────────────────────────────────────────────────────────
 
         private void Start()
         {
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
 
-            // Initialise yaw from player's current facing so there's no snap on start.
             _yaw = _controller.transform.eulerAngles.y;
         }
 
@@ -98,10 +92,6 @@ namespace CyberPulse.Player
             _kickbackCoroutine = StartCoroutine(DashKickbackRoutine());
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Per-frame updates (LateUpdate so all physics have settled)
-        // ──────────────────────────────────────────────────────────────────────
-
         private void LateUpdate()
         {
             ApplyLook();
@@ -110,18 +100,12 @@ namespace CyberPulse.Player
             UpdateFOV();
             UpdateShake();
 
-            // Compose all rotation contributions on the pivot.
             transform.localRotation = Quaternion.Euler(_pitch + _dashKickback + _landingDip, 0f, _wallSlideTilt);
 
-            // Head bob + screen shake applied to the camera child's local position.
             _camera.transform.localPosition = new Vector3(_shakeOffset.x, _bobOffset + _shakeOffset.y, 0f);
 
             _lookDelta = Vector2.zero;
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Screen shake — call Shake() from outside (damage, kills, explosions)
-        // ──────────────────────────────────────────────────────────────────────
 
         /// <summary>Trigger a screen shake. Larger values override smaller in-progress shakes.</summary>
         public void Shake(float intensity, float duration)
@@ -149,23 +133,14 @@ namespace CyberPulse.Player
                 Random.Range(-1f, 1f) * magnitude);
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Look
-        // ──────────────────────────────────────────────────────────────────────
-
         private void ApplyLook()
         {
             _yaw   += _lookDelta.x * _mouseSensitivity;
             _pitch -= _lookDelta.y * _mouseSensitivity;
             _pitch  = Mathf.Clamp(_pitch, -80f, 80f);
 
-            // Yaw rotates the entire player root (so the collider faces the right way).
             _controller.transform.rotation = Quaternion.Euler(0f, _yaw, 0f);
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Wall-slide tilt
-        // ──────────────────────────────────────────────────────────────────────
 
         private void UpdateWallSlideTilt()
         {
@@ -173,15 +148,10 @@ namespace CyberPulse.Player
             _wallSlideTilt = Mathf.Lerp(_wallSlideTilt, target, Time.deltaTime * _tiltLerpSpeed);
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Head bob
-        // ──────────────────────────────────────────────────────────────────────
-
         private void UpdateHeadBob()
         {
             if (!_controller.IsGrounded || _controller.CurrentSpeed < 0.1f)
             {
-                // Smoothly return to zero when airborne or stationary.
                 _bobOffset = Mathf.Lerp(_bobOffset, 0f, Time.deltaTime * 8f);
                 return;
             }
@@ -191,25 +161,15 @@ namespace CyberPulse.Player
             _bobOffset = Mathf.Sin(_bobTimer) * _bobAmplitude * speedFactor;
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // FOV
-        // ──────────────────────────────────────────────────────────────────────
-
         private void UpdateFOV()
         {
-            // FOV scales continuously with speed: 0 → baseFOV, max speed → sprintFOV.
             float t = Mathf.Clamp01(_controller.CurrentSpeed / _controller.MaxHorizontalSpeed);
             float target = Mathf.Lerp(_baseFOV, _sprintFOV, t);
             _camera.fieldOfView = Mathf.Lerp(_camera.fieldOfView, target, Time.deltaTime * _fovLerpSpeed);
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Dash kickback animation (uses unscaled time so it survives time-scale changes)
-        // ──────────────────────────────────────────────────────────────────────
-
         private IEnumerator DashKickbackRoutine()
         {
-            // Kick in: snap toward _kickbackAngle over kickInDuration.
             float elapsed = 0f;
             float startAngle = _dashKickback;
 
@@ -221,7 +181,6 @@ namespace CyberPulse.Player
             }
             _dashKickback = _kickbackAngle;
 
-            // Spring back: lerp back to 0 over kickOutDuration.
             elapsed = 0f;
             while (elapsed < _kickOutDuration)
             {
@@ -233,10 +192,6 @@ namespace CyberPulse.Player
             _kickbackCoroutine = null;
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Landing dip — camera nods forward on impact
-        // ──────────────────────────────────────────────────────────────────────
-
         private void TriggerLandingDip()
         {
             if (_landingDipCoroutine != null)
@@ -246,7 +201,6 @@ namespace CyberPulse.Player
 
         private IEnumerator LandingDipRoutine()
         {
-            // Quick snap down (35% of duration), then spring back (65%).
             float dipIn  = _landingDipDuration * 0.35f;
             float dipOut = _landingDipDuration * 0.65f;
             float elapsed = 0f;

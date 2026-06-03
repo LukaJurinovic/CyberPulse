@@ -20,25 +20,23 @@ namespace CyberPulse.Systems
         [SerializeField] private AudioSource _musicSource;
 
         [Header("BPM Detection")]
-        [SerializeField] private int   _windowSize        = 2048;   // samples (~46ms at 44100 Hz)
-        [SerializeField] private float _energyThreshold   = 0.01f;  // absolute floor for onset candidates
-        [SerializeField] private float _onsetThreshFactor = 0.5f;   // fraction of avg energy for dynamic threshold
+        [SerializeField] private int   _windowSize        = 2048;
+        [SerializeField] private float _energyThreshold   = 0.01f;
+        [SerializeField] private float _onsetThreshFactor = 0.5f;
 
         [Header("Energy Timeline")]
-        [SerializeField] private float _timelineSampleInterval = 0.5f;  // seconds per timeline bucket
+        [SerializeField] private float _timelineSampleInterval = 0.5f;
 
         [Header("Manual Override")]
-        [SerializeField] private float _manualBPM = 0f;  // 0 = auto-detect; >0 = skip analysis
+        [SerializeField] private float _manualBPM = 0f;
 
         [Header("Startup")]
-        [SerializeField] private bool _analyzeOnStart = true;  // LoadingController sets false and drives AnalyzeClip itself
+        [SerializeField] private bool _analyzeOnStart = true;
 
         public SongProfile Profile    { get; private set; }
         public bool         IsAnalyzed { get; private set; }
 
         public event Action<SongProfile> OnAnalysisComplete;
-
-        // ── Lifecycle ─────────────────────────────────────────────────────────
 
         private void Awake()
         {
@@ -52,8 +50,6 @@ namespace CyberPulse.Systems
                 AnalyzeClip(_musicSource.clip);
         }
 
-        // ── Public API ────────────────────────────────────────────────────────
-
         public void AnalyzeClip(AudioClip clip)
         {
             if (clip == null)
@@ -64,7 +60,6 @@ namespace CyberPulse.Systems
 
             if (_manualBPM > 0f)
             {
-                // Build a minimal profile with the override BPM and no timeline.
                 Profile = new SongProfile
                 {
                     BPM            = _manualBPM,
@@ -84,8 +79,6 @@ namespace CyberPulse.Systems
             StartCoroutine(AnalyzeRoutine(clip));
         }
 
-        // ── Analysis coroutine ────────────────────────────────────────────────
-
         private IEnumerator AnalyzeRoutine(AudioClip clip)
         {
             int   sampleRate   = clip.frequency;
@@ -93,7 +86,6 @@ namespace CyberPulse.Systems
             int   totalSamples = clip.samples;
             float duration     = (float)totalSamples / sampleRate;
 
-            // ── 1. Get raw samples and downmix to mono ────────────────────────
             float[] raw  = new float[totalSamples * channels];
             clip.GetData(raw, 0);
 
@@ -116,7 +108,6 @@ namespace CyberPulse.Systems
             raw = null;
             yield return null;
 
-            // ── 2. Compute RMS energy per window ─────────────────────────────
             int     numWindows     = totalSamples / _windowSize;
             float[] windowEnergy   = new float[numWindows];
             float   sumEnergy      = 0f;
@@ -141,7 +132,6 @@ namespace CyberPulse.Systems
             float dynamicThresh   = Mathf.Max(_energyThreshold, avgEnergy * _onsetThreshFactor);
             float windowDuration  = (float)_windowSize / sampleRate;
 
-            // ── 3. Detect onset peaks ─────────────────────────────────────────
             var onsetTimes = new List<float>(256);
             for (int w = 1; w < numWindows - 1; w++)
             {
@@ -151,10 +141,8 @@ namespace CyberPulse.Systems
             }
             yield return null;
 
-            // ── 4. Inter-onset interval analysis → BPM ───────────────────────
             float bpm = DetectBPM(onsetTimes);
 
-            // ── 5. Build energy timeline (sampled every _timelineSampleInterval) ──
             int   timelineLen      = Mathf.Max(1, Mathf.CeilToInt(duration / _timelineSampleInterval));
             int   samplesPerBucket = Mathf.RoundToInt(_timelineSampleInterval * sampleRate);
             float[] timeline       = new float[timelineLen];
@@ -172,7 +160,6 @@ namespace CyberPulse.Systems
             }
             yield return null;
 
-            // ── 6. Compute variance ───────────────────────────────────────────
             float varianceSumSq = 0f;
             for (int t = 0; t < timelineLen; t++)
             {
@@ -181,7 +168,6 @@ namespace CyberPulse.Systems
             }
             float variance = timelineLen > 0 ? Mathf.Sqrt(varianceSumSq / timelineLen) : 0f;
 
-            // ── 7. Publish result ─────────────────────────────────────────────
             Profile = new SongProfile
             {
                 BPM            = bpm,
@@ -198,24 +184,19 @@ namespace CyberPulse.Systems
                       $"avgEnergy={avgEnergy:F3}, {onsetTimes.Count} onsets detected.");
         }
 
-        // ── BPM from IOIs ─────────────────────────────────────────────────────
-
         private float DetectBPM(List<float> onsetTimes)
         {
             if (onsetTimes.Count < 4) return 120f;
 
-            // Bucket onset intervals into BPM histogram (5-BPM resolution, 60-200 range).
             var histogram = new Dictionary<int, int>(32);
 
             for (int i = 1; i < onsetTimes.Count; i++)
             {
                 float ioi = onsetTimes[i] - onsetTimes[i - 1];
-                // Only consider IOIs in the 30-300 BPM range.
                 if (ioi < 0.2f || ioi > 2.0f) continue;
 
                 int rawBPM = Mathf.RoundToInt(60f / ioi);
 
-                // Vote for the raw BPM and its 2× harmonic (avoids half-time traps).
                 foreach (int candidate in new[] { rawBPM, rawBPM * 2 })
                 {
                     if (candidate < 60 || candidate > 200) continue;
@@ -237,8 +218,6 @@ namespace CyberPulse.Systems
                 }
             }
 
-            // Prefer mid-tempo (80-160 BPM): pick the highest-voted bucket in that range
-            // if it scores within 2 votes of the overall winner (avoids 60/200 edge traps).
             int midBucket = -1, midVotes = 0;
             foreach (var kvp in histogram)
             {
@@ -253,8 +232,6 @@ namespace CyberPulse.Systems
 
             return Mathf.Clamp(bestBucket, 60, 200);
         }
-
-        // ── Fallback ──────────────────────────────────────────────────────────
 
         private void UseDefault(float duration)
         {

@@ -27,15 +27,15 @@ namespace CyberPulse.Systems
 
         [Header("Passive Fill")]
         [SerializeField] private float _passiveFillPerSecond = 1.5f;
-        [SerializeField] private int   _beatStopBeats        = 4;    // on-beat shot pauses fill for N beats
-        [SerializeField] private float _fillMultiplierMax    = 3f;   // fill rate multiplier at end of song (1× at start → this at end)
+        [SerializeField] private int   _beatStopBeats        = 4;
+        [SerializeField] private float _fillMultiplierMax    = 3f;
 
         [Header("Music Source (for time-scaling)")]
         [SerializeField] private AudioSource _musicSource;
 
         [Header("Hit / Kill")]
-        [SerializeField] private float _tracePerHit  = 8f;    // % added per enemy hit on player
-        [SerializeField] private float _drainOnKill  = 12f;   // % drained per kill
+        [SerializeField] private float _tracePerHit  = 8f;
+        [SerializeField] private float _drainOnKill  = 12f;
 
         [Header("Score Milestone Drain")]
         [SerializeField] private float _drainPerMilestone = 3f;
@@ -62,18 +62,14 @@ namespace CyberPulse.Systems
         private bool  _alertActive;
         private bool  _criticalActive;
         private bool  _failFired;
-        private int   _beatStopCountdown;   // beats remaining where passive fill is paused
+        private int   _beatStopCountdown;
 
         private static readonly List<EnemyHealth> _pendingEnemies = new();
         private readonly HashSet<EnemyHealth> _liveEnemies = new();
 
-        // ── Public read-only state ────────────────────────────────────────────
-
         public float Value      => _value;
         public float Normalized => _value / 100f;
         public int   EnemyCount => _liveEnemies.Count;
-
-        // ── Lifecycle ─────────────────────────────────────────────────────────
 
         private void Awake()
         {
@@ -115,8 +111,6 @@ namespace CyberPulse.Systems
 
         private void OnPhaseChanged(GamePhase phase)
         {
-            // If Purge starts (or any later phase) while no enemies remain and all waves
-            // are already sent, skip straight to Extract so the run can end.
             if ((int)phase >= (int)GamePhase.Purge && _liveEnemies.Count == 0
                 && (WaveDirector.Instance == null || WaveDirector.Instance.AllWavesSent))
                 GameManager.Instance?.SetPhase(GamePhase.Extract);
@@ -133,11 +127,6 @@ namespace CyberPulse.Systems
         {
             float dt = Time.deltaTime;
 
-            // Passive fill only advances while enemies are alive (you're being hunted). With the
-            // layered progression, waves for the next layer are held until you ascend, so once a
-            // layer is cleared there are no enemies to drain trace — without this pause the meter
-            // would run to 100% while you siphon nodes / climb. (In single-arena, 0 enemies +
-            // all-waves-sent already ends the run, so this never softens that mode.)
             if (_beatStopCountdown <= 0 && _liveEnemies.Count > 0)
             {
                 float multiplier = Mathf.Lerp(1f, _fillMultiplierMax, SongProgress());
@@ -151,8 +140,6 @@ namespace CyberPulse.Systems
             UpdateUI();
         }
 
-        // ── Public drain API ─────────────────────────────────────────────────
-
         /// <summary>
         /// Directly drain the trace by <paramref name="percent"/> points (0-100 scale).
         /// Called by missile intercepts and any other non-kill drain sources.
@@ -161,8 +148,6 @@ namespace CyberPulse.Systems
         {
             _value = Mathf.Max(0f, _value - percent);
         }
-
-        // ── Enemy registration (called by EnemyHealth) ────────────────────────
 
         public static void RegisterEnemy(EnemyHealth enemy)
         {
@@ -189,8 +174,6 @@ namespace CyberPulse.Systems
             }
         }
 
-        // ── Event handlers ────────────────────────────────────────────────────
-
         private void OnPlayerHit(int _)
         {
             _value = Mathf.Clamp(_value + _tracePerHit, 0f, 100f);
@@ -211,8 +194,6 @@ namespace CyberPulse.Systems
         {
             _value = Mathf.Max(0f, _value - _drainPerMilestone);
         }
-
-        // ── Threshold reactions ───────────────────────────────────────────────
 
         private void HandleThresholds()
         {

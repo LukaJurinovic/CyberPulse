@@ -17,20 +17,20 @@ namespace CyberPulse.Enemy
     {
         [Header("Orbit")]
         [SerializeField] private float _orbitRadius  = 10f;
-        [SerializeField] private float _orbitSpeed   = 45f;   // degrees per second
+        [SerializeField] private float _orbitSpeed   = 45f;
         [SerializeField] private float _trackSpeed   = 2.5f;
 
         [Header("Missile")]
         [SerializeField] private float _fireInterval    = 3f;
         [SerializeField] private int   _missileDamage   = 20;
-        [SerializeField] private float _missileSpeed    = 6f;    // slow enough to shoot down comfortably
-        [SerializeField] private float _homingStrength  = 1.2f;  // reduced to compensate for larger target
-        [SerializeField] private float _missileAoe      = 2f;    // wall-detonation radius
+        [SerializeField] private float _missileSpeed    = 6f;
+        [SerializeField] private float _homingStrength  = 1.2f;
+        [SerializeField] private float _missileAoe      = 2f;
         [SerializeField] private LayerMask _playerLayer;
         [SerializeField] private LayerMask _groundLayer;
 
         [Header("Arena Bounds")]
-        [SerializeField] private float _arenaBound = 24f;  // clamp keeps enemy inside arena walls (±26)
+        [SerializeField] private float _arenaBound = 24f;
 
         private EnemyHealth      _health;
         private EnemySensor      _sensor;
@@ -41,7 +41,7 @@ namespace CyberPulse.Enemy
         private float _fireTimer;
         private float _attackPulseUntil;
         private bool  _isDead;
-        private float _baseY;   // spawn-floor height — keeps the orbit on this enemy's own layer
+        private float _baseY;
 
         private void Awake()
         {
@@ -49,7 +49,7 @@ namespace CyberPulse.Enemy
             _sensor     = GetComponent<EnemySensor>();
             _visual     = GetComponent<EnemyStateVisual>();
             _orbitAngle = Random.Range(0f, 360f);
-            _baseY      = transform.position.y;   // captured here so stacked layers orbit correctly
+            _baseY      = transform.position.y;
         }
 
         private void OnEnable()
@@ -82,31 +82,26 @@ namespace CyberPulse.Enemy
         {
             if (_isDead || _target == null) return;
 
-            // Strafe orbit around player
             _orbitAngle += _orbitSpeed * Time.deltaTime;
             float rad = _orbitAngle * Mathf.Deg2Rad;
             Vector3 orbitPos = _target.position
                 + new Vector3(Mathf.Cos(rad), 0f, Mathf.Sin(rad)) * _orbitRadius;
-            orbitPos.y = _baseY;   // stay on this enemy's own floor, not hard-pinned to y=0
+            orbitPos.y = _baseY;
 
             transform.position = Vector3.Lerp(transform.position, orbitPos,
                 _trackSpeed * Time.deltaTime);
 
-            // Clamp inside arena walls — prevents the enemy from phasing through the boundary.
-            // Min(_arenaBound, 24) keeps it safe even if an older prefab serialized a wider bound.
             float b = Mathf.Min(_arenaBound, 24f);
             transform.position = new Vector3(
                 Mathf.Clamp(transform.position.x, -b, b),
                 _baseY,
                 Mathf.Clamp(transform.position.z, -b, b));
 
-            // Face player
             Vector3 dir = (_target.position - transform.position); dir.y = 0;
             if (dir.sqrMagnitude > 0.01f)
                 transform.rotation = Quaternion.Slerp(transform.rotation,
                     Quaternion.LookRotation(dir), Time.deltaTime * 5f);
 
-            // Fire
             _fireTimer -= Time.deltaTime;
             if (_fireTimer <= 0f)
             {
@@ -132,7 +127,6 @@ namespace CyberPulse.Enemy
             go.transform.rotation = Quaternion.LookRotation(
                 (_target.position + Vector3.up - go.transform.position).normalized);
 
-            // Visual — large cyan elongated capsule (readable at range, rewarding to shoot down)
             var vis = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             vis.transform.SetParent(go.transform, false);
             vis.transform.localScale    = new Vector3(0.4f, 0.9f, 0.4f);
@@ -152,7 +146,6 @@ namespace CyberPulse.Enemy
             proj.SetHoming(_target, _homingStrength);
             proj.SetAoeRadius(_missileAoe);
 
-            // Intercept reward: shooting this missile down drains trace and refreshes combo.
             proj.SetInterceptReward(() =>
             {
                 TraceMeter.Instance?.DrainDirect(5f);
@@ -162,7 +155,6 @@ namespace CyberPulse.Enemy
             var myCol = GetComponent<Collider>();
             if (myCol != null) Physics.IgnoreCollision(col, myCol);
 
-            // Lock-on proximity beep — accelerates as the missile closes on the player.
             var lockAudio = go.AddComponent<AudioSource>();
             lockAudio.spatialBlend = 1f;
             lockAudio.dopplerLevel = 0f;

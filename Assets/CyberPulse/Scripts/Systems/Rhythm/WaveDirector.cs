@@ -27,21 +27,24 @@ namespace CyberPulse.Systems
         [SerializeField] private GameObject  _cubePrefab;
 
         [Header("Timing")]
-        [SerializeField] private float _earlyTriggerSeconds = 0.3f;  // spawn slightly ahead of marked time
+        [SerializeField] private float _earlyTriggerSeconds = 0.3f;
 
         [Header("Spawn placement")]
-        [SerializeField] private LayerMask _obstacleMask;            // arena geometry — aerial spawns avoid overlapping it
+        [SerializeField] private LayerMask _obstacleMask;
         [SerializeField] private float     _aerialHeight = 6f;
 
+        [Header("Layered difficulty")]
+        [Tooltip("Each layer above the first scales its (procedural) enemy counts up by this fraction. " +
+                 "0.33 → roughly 1× / 1.33× / 1.67× per layer, the 15 / 20 / 25 relationship.")]
+        [SerializeField] private float _layerEnemyScaleStep = 0.33f;
+
         private WaveDefinition[] _waves;
-        private int[] _waveLayer;     // per-wave layer index (layered mode); null = single-arena
+        private int[] _waveLayer;
         private int  _nextWaveIndex;
         private bool _running;
         private int  _totalSpawned;
         private bool _songStarted;
         private bool _winFired;
-
-        // ── Lifecycle ─────────────────────────────────────────────────────────
 
         private void Awake()
         {
@@ -69,9 +72,6 @@ namespace CyberPulse.Systems
         {
             if (!_running || _waves == null) return;
 
-            // Wait for the song to actually begin before running the timeline. The
-            // loading screen holds playback until analysis finishes, so scheduling off
-            // SongTime()'s Time.time fallback would fire waves during the load screen.
             if (_musicSource != null)
             {
                 if (_musicSource.isPlaying) _songStarted = true;
@@ -80,8 +80,6 @@ namespace CyberPulse.Systems
 
             if (_nextWaveIndex < _waves.Length)
             {
-                // Layered mode: hold any wave bound to a layer the player hasn't reached yet,
-                // so each stacked arena only fights its own segment of the timeline.
                 int  activeLayer = LayerManager.Instance != null ? LayerManager.Instance.ActiveIndex : 0;
                 bool eligible    = _waveLayer == null || _waveLayer[_nextWaveIndex] <= activeLayer;
 
@@ -97,8 +95,6 @@ namespace CyberPulse.Systems
                 }
             }
 
-            // Win condition. Layered mode wins via LayerManager when the top layer clears, so
-            // only the single-arena fallback uses the song-end + no-enemies check here.
             if (LayerManager.Instance == null && _musicSource != null)
             {
                 if (!_winFired && _songStarted && !_musicSource.isPlaying && !AudioListener.pause
@@ -110,8 +106,6 @@ namespace CyberPulse.Systems
                 }
             }
 
-            // Fail condition for layered mode: song ends before the player cleared all layers.
-            // LayerManager owns the win; if it hasn't fired by the time the track runs out, it's a loss.
             if (LayerManager.Instance != null && _musicSource != null)
             {
                 if (!_winFired && _songStarted && !_musicSource.isPlaying && !AudioListener.pause)
@@ -121,8 +115,6 @@ namespace CyberPulse.Systems
                 }
             }
         }
-
-        // ── Public API ────────────────────────────────────────────────────────
 
         public bool AllWavesSent => _waves != null && _nextWaveIndex >= _waves.Length;
         public int  WaveIndex    => _nextWaveIndex;
@@ -140,8 +132,6 @@ namespace CyberPulse.Systems
             _running        = true;
             AssignWaveLayers();
         }
-
-        // ── Private ───────────────────────────────────────────────────────────
 
         private void ApplyProfile(SongProfile profile)
         {
@@ -186,7 +176,11 @@ namespace CyberPulse.Systems
         {
             var layer = LayerManager.Instance != null ? LayerManager.Instance.ActiveLayer : null;
 
-            for (int i = 0; i < wave.Count; i++)
+            int spawnCount = wave.Count;
+            if (layer != null)
+                spawnCount = Mathf.Max(1, Mathf.RoundToInt(spawnCount * (1f + layer.Index * _layerEnemyScaleStep)));
+
+            for (int i = 0; i < spawnCount; i++)
             {
                 EnemyType  type   = wave.EnemyTypes[i % wave.EnemyTypes.Length];
                 GameObject prefab = PrefabForType(type);
@@ -207,7 +201,6 @@ namespace CyberPulse.Systems
 
                 var go = Instantiate(prefab, pos, Quaternion.identity);
 
-                // Layered mode: hand the enemy to its layer so its death counts toward the clear.
                 if (layer != null)
                 {
                     var health = go.GetComponent<EnemyHealth>();
@@ -215,11 +208,10 @@ namespace CyberPulse.Systems
                 }
             }
 
-            // Progressive reveal: each wave uncovers one more objective node in the layer.
             layer?.RevealNextNode();
 
             _totalSpawned++;
-            Debug.Log($"[WaveDirector] Wave {_totalSpawned}: {wave.Count} enemies at t={SongTime():F1}s" +
+            Debug.Log($"[WaveDirector] Wave {_totalSpawned}: {spawnCount} enemies at t={SongTime():F1}s" +
                       (layer != null ? $" (layer {layer.Index})" : ""));
         }
 
@@ -256,7 +248,6 @@ namespace CyberPulse.Systems
                 return desired;
             }
 
-            // Aerial: find a clear point at flight height.
             for (int attempt = 0; attempt < 8; attempt++)
             {
                 Vector3 candidate = desired;

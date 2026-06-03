@@ -21,13 +21,10 @@ namespace CyberPulse.Enemy
         [SerializeField] private Color _shardColor      = new Color(1f, 0.25f, 0.05f);
         [SerializeField] private Color _shardEmissive   = new Color(2f, 0.4f,  0.1f);
 
-        // The visual child so we can hide it when shards spawn.
         [SerializeField] private Renderer _enemyRenderer;
 
         /// <summary>Wire the visual renderer at runtime (for procedurally created enemies).</summary>
         public void SetRenderer(Renderer r) { _enemyRenderer = r; }
-
-        // ── Called by EnemyHealth ─────────────────────────────────────────────
 
         public void Explode()
         {
@@ -42,21 +39,18 @@ namespace CyberPulse.Enemy
                 Vector3 offset = Random.insideUnitSphere * 0.5f;
                 var shard = GameObject.CreatePrimitive(PrimitiveType.Cube);
 
-                // Remove the collider so shards don't block player movement
                 Destroy(shard.GetComponent<BoxCollider>());
 
                 shard.transform.position = origin + offset;
                 shard.transform.rotation = Random.rotation;
                 shard.transform.localScale = Vector3.one * size;
 
-                // Unique material per shard for independent alpha fade
                 var mat = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
                 mat.SetColor("_BaseColor",     _shardColor);
                 mat.SetColor("_EmissionColor", _shardEmissive);
                 mat.EnableKeyword("_EMISSION");
-                // Enable transparency
-                mat.SetFloat("_Surface", 1f);              // Transparent surface type in URP Lit
-                mat.SetFloat("_Blend",   0f);              // Alpha blend
+                mat.SetFloat("_Surface", 1f);
+                mat.SetFloat("_Blend",   0f);
                 mat.SetFloat("_AlphaClip", 0f);
                 mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
                 mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
@@ -69,8 +63,6 @@ namespace CyberPulse.Enemy
                 StartCoroutine(FadeShard(shard, mat, _fadeDuration));
             }
         }
-
-        // ── Fade coroutine ────────────────────────────────────────────────────
 
         private static IEnumerator FadeShard(GameObject shard, Material mat, float duration)
         {

@@ -23,17 +23,13 @@ namespace CyberPulse.Systems
         [Header("Debug")]
         [SerializeField] private bool _logChanges = false;
 
-        // ── Public state ──────────────────────────────────────────────────────
-
         public float Value      { get; private set; }
         public float Normalized => Value / 100f;
 
-        public event Action<float> OnSyncChanged;   // arg = new value 0-100
-        public event Action        OnSyncFull;      // fires once when reaching 100
+        public event Action<float> OnSyncChanged;
+        public event Action        OnSyncFull;
 
         private bool _wasFull;
-
-        // ── Lifecycle ─────────────────────────────────────────────────────────
 
         private void Awake()
         {
@@ -43,7 +39,6 @@ namespace CyberPulse.Systems
 
         private void Start()
         {
-            // BeatReactor drives Add/Subtract; subscribe to its off-rhythm drain signal.
             if (BeatReactor.Instance != null)
                 BeatReactor.Instance.OnOffRhythmTick += HandleOffRhythmTick;
         }
@@ -53,8 +48,6 @@ namespace CyberPulse.Systems
             if (BeatReactor.Instance != null)
                 BeatReactor.Instance.OnOffRhythmTick -= HandleOffRhythmTick;
         }
-
-        // ── Public API ────────────────────────────────────────────────────────
 
         public void Add(float amount)
         {
@@ -83,8 +76,6 @@ namespace CyberPulse.Systems
             if (_logChanges) Debug.Log($"[SyncGauge] Spent {cost:F0} on {weapon.WeaponName}");
             return true;
         }
-
-        // ── Private ───────────────────────────────────────────────────────────
 
         private void HandleOffRhythmTick(float dt)
         {

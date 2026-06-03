@@ -10,8 +10,8 @@ namespace CyberPulse.World
     [RequireComponent(typeof(Collider))]
     public class JumpPad : MonoBehaviour
     {
-        [SerializeField] private float _impulse    = 15f;     // upward velocity (m/s) — clears 6 m towers
-        [SerializeField] private float _cooldown   = 0.35f;   // prevents re-launch spam
+        [SerializeField] private float _impulse    = 15f;
+        [SerializeField] private float _cooldown   = 0.35f;
         [SerializeField] private LayerMask _playerLayer;
 
         private float _nextReady;
@@ -35,7 +35,7 @@ namespace CyberPulse.World
             if (rb == null) return;
 
             var v = rb.linearVelocity;
-            if (v.y < 0f) v.y = 0f;          // cancel downward velocity for consistent launch height
+            if (v.y < 0f) v.y = 0f;
             rb.linearVelocity = v;
             rb.AddForce(Vector3.up * _impulse, ForceMode.Impulse);
 

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 using CyberPulse.Systems;
-using Random = UnityEngine.Random;   // disambiguate from System.Random (System is imported for Action)
+using Random = UnityEngine.Random;
 
 namespace CyberPulse.World
 {
@@ -54,7 +54,6 @@ namespace CyberPulse.World
         private static readonly Vector2 SpawnXZ  = new Vector2(0f, -22f);
         private static readonly Color   BlockCol = new Color(0.08f, 0.06f, 0.15f);
 
-        // Axis-aligned bounding rects of placed blocks (XZ plane, padded by _minSpacing).
         private readonly List<Rect>     _occupied = new();
         private readonly List<Vector3>  _elevatedAnchors = new();
 
@@ -69,13 +68,8 @@ namespace CyberPulse.World
 
         private enum Archetype { Pillar, Wall, Cover, Bunker, Platform, Tower }
 
-        // ── Lifecycle ─────────────────────────────────────────────────────────
-
         private void Awake()
         {
-            // Stacked layers each own a generator, so we no longer enforce a single
-            // instance. Instance just points at the most recently awoken generator,
-            // which is enough for DataBitRenderer's elevated-anchor lookup.
             Instance = this;
         }
 
@@ -98,8 +92,6 @@ namespace CyberPulse.World
 
         private void ApplyProfile(SongProfile profile) =>
             Generate(profile.EnergyVariance, profile.AverageEnergy);
-
-        // ── Generation ────────────────────────────────────────────────────────
 
         private void Generate(float variance, float avgEnergy)
         {
@@ -127,8 +119,6 @@ namespace CyberPulse.World
             OnArenaGenerated?.Invoke();
         }
 
-        // ── Block placement ───────────────────────────────────────────────────
-
         private bool TryPlaceBlock(GameObject parent, float variance, float avgEnergy)
         {
             Archetype arch = PickArchetype(variance);
@@ -154,10 +144,6 @@ namespace CyberPulse.World
                     if (r.Overlaps(candidate)) { overlap = true; break; }
                 if (overlap) continue;
 
-                // Tiered elevation:
-                //   Tower    — high-tier (4.0–6.0 m), flat top, jump-pad alongside.
-                //   Platform — mid-tier (2.5–4.5 m), thin slab, jump-pad alongside.
-                //   Cover    — occasionally low elevation (0.8–2.0 m), stepping stone.
                 float yBase = arch switch
                 {
                     Archetype.Tower    => Random.Range(4.0f, 6.0f),
@@ -166,14 +152,10 @@ namespace CyberPulse.World
                     _                  => 0f,
                 };
 
-                // Elevated blocks (Tower/Platform) sit far above the ground navmesh, so they
-                // don't need to carve it — skip carving to avoid pointless runtime updates.
                 bool carveNavMesh = yBase < 0.5f;
                 PlaceBlock(parent, x, _floorY + yBase + h * 0.5f, z, w, h, d, carveNavMesh);
                 _occupied.Add(new Rect(x - w * 0.5f, z - d * 0.5f, w, d));
 
-                // Record top-surface anchor for elevated structures so DataBitRenderer
-                // can hide bits up there and the player has a reason to climb.
                 if (arch == Archetype.Tower || arch == Archetype.Platform)
                 {
                     float topY = _floorY + yBase + h + 0.2f;
@@ -230,9 +212,8 @@ namespace CyberPulse.World
         private void TryPlaceJumpPad(GameObject parent, float bx, float bz, float bw, float bd)
         {
             const float padSize = 1.4f;
-            const float padGap  = 1.2f;   // distance from block edge
+            const float padGap  = 1.2f;
 
-            // Try four cardinal offsets around the block.
             Vector2[] offsets =
             {
                 new Vector2( bw * 0.5f + padGap,                  0f),
@@ -263,18 +244,14 @@ namespace CyberPulse.World
             }
         }
 
-        // ── Archetype helpers ─────────────────────────────────────────────────
-
         private Archetype PickArchetype(float variance)
         {
-            // High variance → more disruptive geometry (pillars, walls, towers).
             float r           = Random.value;
             float pillarCut   = 0.08f + variance * 0.08f;
             float wallCut     = pillarCut  + 0.18f + variance * 0.10f;
             float platformCut = wallCut    + 0.18f;
             float towerCut    = platformCut + 0.12f + variance * 0.05f;
             float coverCut    = towerCut    + 0.25f;
-            // remainder → Bunker
 
             if (r < pillarCut)   return Archetype.Pillar;
             if (r < wallCut)     return Archetype.Wall;
@@ -304,13 +281,13 @@ namespace CyberPulse.World
                 case Archetype.Platform:
                     w = Random.Range(2.5f,  5.5f);
                     d = Random.Range(2.5f,  4.5f);
-                    h = Random.Range(0.25f, 0.45f);   // thin slab
+                    h = Random.Range(0.25f, 0.45f);
                     break;
 
                 case Archetype.Tower:
                     w = Random.Range(2.0f,  3.5f);
                     d = Random.Range(2.0f,  3.5f);
-                    h = Random.Range(0.4f,  0.6f);    // chunky flat top
+                    h = Random.Range(0.4f,  0.6f);
                     break;
 
                 case Archetype.Cover:
@@ -319,15 +296,13 @@ namespace CyberPulse.World
                     h = Random.Range(0.7f,  1.8f);
                     break;
 
-                default: // Bunker
+                default:
                     w = Random.Range(2.5f,  5.5f);
                     d = Random.Range(2.0f,  4.5f);
                     h = Mathf.Lerp(1.5f, 2.8f, avgEnergy);
                     break;
             }
         }
-
-        // ── GameObject creation ───────────────────────────────────────────────
 
         private void PlaceBlock(GameObject parent,
             float x, float y, float z, float w, float h, float d, bool carveNavMesh)
@@ -367,7 +342,6 @@ namespace CyberPulse.World
             mat.EnableKeyword("_EMISSION");
             go.GetComponent<MeshRenderer>().sharedMaterial = mat;
 
-            // Disable the static mesh collider; add a trigger volume above the plate.
             Destroy(go.GetComponent<BoxCollider>());
 
             var trigger = new GameObject("Trigger");

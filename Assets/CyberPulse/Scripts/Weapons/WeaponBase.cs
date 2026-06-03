@@ -47,10 +47,6 @@ namespace CyberPulse.Weapons
         /// <summary>Camera transform from the last TryFire call. Subclasses can read this in TriggerSpecial.</summary>
         protected Transform _lastCameraTransform;
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Public state
-        // ──────────────────────────────────────────────────────────────────────
-
         public string WeaponName  => _weaponName;
         public float SpecialCost  => _specialCost;
         public int CurrentAmmo    => _currentAmmo;
@@ -71,18 +67,10 @@ namespace CyberPulse.Weapons
         /// <summary>Fires on any weapon's successful shot. BeatReactor uses this.</summary>
         public static event Action OnAnyWeaponFired;
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Lifecycle
-        // ──────────────────────────────────────────────────────────────────────
-
         protected virtual void Awake()
         {
             _currentAmmo = _magazineSize;
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Public API called by WeaponHolder
-        // ──────────────────────────────────────────────────────────────────────
 
         /// <summary>Attempt to fire. Returns false if gated by cooldown, reloading, or empty.</summary>
         public bool TryFire(Transform cameraTransform)
@@ -119,7 +107,6 @@ namespace CyberPulse.Weapons
 
             if (BeatClock.Instance != null && BeatClock.Instance.IsOnBeat)
             {
-                // Instant on-beat reload: play clip immediately at normal pitch as feedback.
                 PlayAudio(_reloadClip, 1f);
                 ApplyReload();
                 return;
@@ -149,10 +136,6 @@ namespace CyberPulse.Weapons
             _isReloading = false;
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Subclass contract
-        // ──────────────────────────────────────────────────────────────────────
-
         /// <summary>Perform the actual shot — raycast or instantiate projectile.</summary>
         protected abstract void FireProjectile(Transform cameraTransform);
 
@@ -181,16 +164,10 @@ namespace CyberPulse.Weapons
             OnAnyWeaponFired?.Invoke();
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Internal helpers
-        // ──────────────────────────────────────────────────────────────────────
-
         private IEnumerator ReloadRoutine()
         {
             _isReloading = true;
 
-            // Pitch-shift the clip so it finishes exactly when _reloadDuration expires.
-            // This keeps the audio in lockstep with the reload timer regardless of clip length.
             if (_audioSource != null && _reloadClip != null && _reloadDuration > 0f)
             {
                 _audioSource.pitch = _reloadClip.length / _reloadDuration;
@@ -218,7 +195,6 @@ namespace CyberPulse.Weapons
         private void StartLoopFireAudio()
         {
             if (_audioSource == null || _fireClip == null) return;
-            // Cancel any in-progress fade so we don't fight it
             if (_fadeCoroutine != null) { StopCoroutine(_fadeCoroutine); _fadeCoroutine = null; _audioSource.volume = 1f; }
             if (_audioSource.isPlaying && _audioSource.clip == _fireClip) return;
             _audioSource.volume = 1f;

@@ -31,8 +31,8 @@ namespace CyberPulse.UI
         [SerializeField] private AudioClip[] _songs;
 
         [Header("Timing (unscaled seconds)")]
-        [SerializeField] private float _minDisplaySeconds = 1.6f;  // floor so a fast analysis doesn't flash by
-        [SerializeField] private float _resultHoldSeconds = 1.4f;  // dwell on the BPM readout before starting
+        [SerializeField] private float _minDisplaySeconds = 1.6f;
+        [SerializeField] private float _resultHoldSeconds = 1.4f;
         [SerializeField] private float _fadeSeconds       = 0.5f;
 
         private enum Stage { Analyzing, Result, Done }
@@ -45,8 +45,6 @@ namespace CyberPulse.UI
         private Texture2D _pixel;
         private GUIStyle  _head, _sub, _data, _hint;
 
-        // ── Lifecycle ─────────────────────────────────────────────────────────
-
         private void Awake()
         {
             _pixel = new Texture2D(1, 1);
@@ -58,13 +56,8 @@ namespace CyberPulse.UI
 
         private IEnumerator Boot()
         {
-            // Freeze gameplay while we analyse. Frame-driven coroutines (the analysis
-            // routine and this one) still advance at timeScale 0 because they yield on
-            // frames, not on scaled time; the overlay uses unscaled time throughout.
             Time.timeScale = 0f;
 
-            // ── Resolve the chosen clip and load it onto the music sources ──────
-            // FilePath (user-imported) is checked first so it always wins over the bundled fallback.
             AudioClip clip = null;
             if (!string.IsNullOrEmpty(SongSelection.FilePath))
                 yield return LoadClipFromFile(SongSelection.FilePath, loaded => clip = loaded);
@@ -75,7 +68,7 @@ namespace CyberPulse.UI
             {
                 _songName = clip.name;
                 if (_ambientSrc != null) _ambientSrc.clip = clip;
-                if (_actionSrc  != null) _actionSrc.clip  = clip;   // single-stem: both sources share the song
+                if (_actionSrc  != null) _actionSrc.clip  = clip;
             }
             else if (_ambientSrc != null && _ambientSrc.clip != null)
             {
@@ -85,7 +78,6 @@ namespace CyberPulse.UI
 
             float startTime = Time.unscaledTime;
 
-            // ── Kick off offline analysis and wait for the profile ─────────────
             if (_analyzer != null)
             {
                 _analyzer.OnAnalysisComplete += OnAnalysisComplete;
@@ -96,18 +88,15 @@ namespace CyberPulse.UI
 
             _stage = Stage.Result;
 
-            // Hold the readout: at least _minDisplaySeconds total, then dwell _resultHoldSeconds.
             float elapsed = Time.unscaledTime - startTime;
             if (elapsed < _minDisplaySeconds)
                 yield return WaitUnscaled(_minDisplaySeconds - elapsed);
             yield return WaitUnscaled(_resultHoldSeconds);
 
-            // ── Start the song + unfreeze gameplay ─────────────────────────────
             Time.timeScale = 1f;
             if (_musicPlayer != null)      _musicPlayer.BeginPlayback();
             else if (_ambientSrc != null)  _ambientSrc.Play();
 
-            // ── Fade the overlay out (unscaled) ────────────────────────────────
             _stage = Stage.Done;
             float t = 0f;
             while (t < _fadeSeconds)
@@ -117,10 +106,8 @@ namespace CyberPulse.UI
                 yield return null;
             }
             _alpha  = 0f;
-            enabled = false;   // stop OnGUI once fully transparent
+            enabled = false;
         }
-
-        // ── Helpers ──────────────────────────────────────────────────────────
 
         private AudioClip ResolveSelectedClip()
         {
@@ -131,7 +118,6 @@ namespace CyberPulse.UI
                     foreach (var c in _songs)
                         if (c != null && c.name == want) return c;
 
-                // Default: first available bundled clip.
                 foreach (var c in _songs)
                     if (c != null) return c;
             }
@@ -176,8 +162,6 @@ namespace CyberPulse.UI
             while (t < seconds) { t += Time.unscaledDeltaTime; yield return null; }
         }
 
-        // ── Overlay ──────────────────────────────────────────────────────────
-
         private void OnGUI()
         {
             if (_alpha <= 0f) return;
@@ -207,7 +191,6 @@ namespace CyberPulse.UI
                 return;
             }
 
-            // Detected BPM — the headline readout.
             _data.normal.textColor = new Color(1f, 0.2f, 0.8f, _alpha);
             GUI.Label(new Rect(x, cy + 112f, 720f, 60f), $"{_profile.BPM:F0} BPM", _data);
 

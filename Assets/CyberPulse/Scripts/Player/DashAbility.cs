@@ -30,10 +30,6 @@ namespace CyberPulse.Player
         private PlayerController _controller;
         private float _cooldownTimer;
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Public state
-        // ──────────────────────────────────────────────────────────────────────
-
         /// <summary>Fires immediately when a dash executes (after force is applied).</summary>
         public event Action OnDashPerformed;
 
@@ -50,10 +46,6 @@ namespace CyberPulse.Player
 
         /// <summary>Immediately clears the cooldown. Called by BeatReactor on an on-beat dash (P1).</summary>
         public void ResetCooldown() => _cooldownTimer = 0f;
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Lifecycle
-        // ──────────────────────────────────────────────────────────────────────
 
         private void Awake()
         {
@@ -77,10 +69,6 @@ namespace CyberPulse.Player
                 _cooldownTimer -= Time.deltaTime;
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Dash logic
-        // ──────────────────────────────────────────────────────────────────────
-
         private void HandleDash()
         {
             if (!CanDash) return;
@@ -88,7 +76,6 @@ namespace CyberPulse.Player
             Vector3 camForward = _cameraTransform.forward;
             Vector3 dashDir = new Vector3(camForward.x, 0f, camForward.z);
 
-            // Fallback to transform forward when looking straight up/down.
             if (dashDir.sqrMagnitude < 0.001f)
                 dashDir = transform.forward;
 

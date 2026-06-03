@@ -22,7 +22,7 @@ namespace CyberPulse.Systems
     {
         public static LayerManager Instance { get; private set; }
 
-        [SerializeField] private ArenaLayer[] _layers;   // ascent order; [0] is the start layer
+        [SerializeField] private ArenaLayer[] _layers;
 
         public int        ActiveIndex { get; private set; }
         public int        LayerCount  => _layers?.Length ?? 0;
@@ -53,7 +53,6 @@ namespace CyberPulse.Systems
                 }
             }
 
-            // Kick off: layer 0 is active from the start.
             OnActiveLayerChanged?.Invoke(ActiveIndex);
         }
 
@@ -72,25 +71,20 @@ namespace CyberPulse.Systems
             if (Instance == this) Instance = null;
         }
 
-        // ── Layer flow ──────────────────────────────────────────────────────────
-
         private void HandleLayerCleared(ArenaLayer layer)
         {
-            // Only the active layer's completion matters for progression.
             if (layer != ActiveLayer) return;
 
             if (layer.ExitDoor != null)
-                layer.ExitDoor.Unlock();           // let the player ascend
+                layer.ExitDoor.Unlock();
             else
-                GameManager.Instance?.TriggerWinState();  // top layer cleared → run complete
+                GameManager.Instance?.TriggerWinState();
         }
 
-        // Only the active layer's door can be unlocked, so a pass-through always means
-        // "advance from the current active layer".
         private void HandleDoorPassed()
         {
             var current = ActiveLayer;
-            if (current?.ExitDoor != null) current.ExitDoor.Lock();   // re-seal behind the player
+            if (current?.ExitDoor != null) current.ExitDoor.Lock();
 
             if (ActiveIndex + 1 < LayerCount)
             {

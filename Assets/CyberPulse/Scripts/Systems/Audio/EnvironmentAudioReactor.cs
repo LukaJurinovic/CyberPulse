@@ -34,9 +34,8 @@ namespace CyberPulse.Systems
 
         [Header("Emissive colours  (HDR for Bloom interaction)")]
         [SerializeField] private Color _wallBaseEmit = new Color(0.015f, 0.02f, 0.05f);
-        [SerializeField] private Color _wallPeakEmit = new Color(0.45f,  1.3f,  3.2f);   // HDR
+        [SerializeField] private Color _wallPeakEmit = new Color(0.45f,  1.3f,  3.2f);
 
-        // Energy-based palette tint — lerp between cool blue and warm cyan.
         private static readonly Color CoolBase = new Color(0.02f, 0.04f, 0.12f);
         private static readonly Color WarmBase = new Color(0.08f, 0.20f, 0.35f);
 
@@ -44,14 +43,11 @@ namespace CyberPulse.Systems
         private static readonly int    BeatPulseID     = Shader.PropertyToID("_CyberBeatPulse");
 
         private readonly List<Renderer> _reactors = new();
-        private Material                _runtimeMat;   // single shared runtime instance
-        private float                   _level;        // current pulse level, attack-instant / decay-slow
+        private Material                _runtimeMat;
+        private float                   _level;
 
         private void Start()
         {
-            // Collect every wall renderer across all stacked layers. GameObject.Find returns only
-            // the first match per name, so in the layered arena it left most walls un-pulsed —
-            // gather them all by name instead.
             var all = Object.FindObjectsByType<MeshRenderer>();
             foreach (var r in all)
             {
@@ -66,16 +62,12 @@ namespace CyberPulse.Systems
                 return;
             }
 
-            // Create one runtime material instance so SetColor works reliably.
-            // Using sharedMaterial here reads the original; assigning it back makes
-            // each renderer use our runtime copy instead (play-mode only — no asset edit).
             _runtimeMat = new Material(_reactors[0].sharedMaterial);
             _runtimeMat.EnableKeyword("_EMISSION");
             _runtimeMat.SetColor(EmissionColorID, _wallBaseEmit);
             foreach (var r in _reactors)
                 r.sharedMaterial = _runtimeMat;
 
-            // Tint base emission to match the song's energy level once analysis is done.
             if (SongAnalyzer.Instance != null)
             {
                 if (SongAnalyzer.Instance.IsAnalyzed)
@@ -90,7 +82,6 @@ namespace CyberPulse.Systems
             if (SongAnalyzer.Instance != null)
                 SongAnalyzer.Instance.OnAnalysisComplete -= ApplySongPalette;
 
-            // Clear the global so a stale pulse value doesn't bleed into other scenes.
             Shader.SetGlobalFloat(BeatPulseID, 0f);
         }
 
@@ -104,22 +95,15 @@ namespace CyberPulse.Systems
         {
             if (_analyzer == null || _runtimeMat == null) return;
 
-            // Bass is beat-reactive; overall RMS saturates at 1.0 with loud music.
             float raw = Mathf.Clamp01(_analyzer.BassAmplitude * _bassMultiplier);
 
-            // Sharpen the response so quiet stretches stay dark and only real beats
-            // climb toward the peak — this is what gives the pulse its contrast.
             float target = Mathf.Pow(raw, _contrastPower);
 
-            // Attack instantly to the target, then decay slowly. The result is a crisp
-            // flash on each beat that falls back to darkness instead of a mushy average.
-            // Unscaled time keeps pulses locked to the music during slow-mo.
             _level = Mathf.Max(target, _level - _pulseDecay * Time.unscaledDeltaTime);
 
             Color emit = Color.Lerp(_wallBaseEmit, _wallPeakEmit, _level);
             _runtimeMat.SetColor(EmissionColorID, emit);
 
-            // Publish the pulse globally so GridFloor.shader can flash the floor in sync.
             Shader.SetGlobalFloat(BeatPulseID, _level * _floorPulseGain);
         }
     }

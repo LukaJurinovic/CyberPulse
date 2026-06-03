@@ -28,7 +28,6 @@ namespace CyberPulse.UI
         {
             if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
             {
-                // Don't allow pausing after the game has already ended (fail/win overlay active)
                 if (!_isPaused && GameManager.Instance != null && GameManager.Instance.IsGameOver)
                     return;
                 SetPaused(!_isPaused);
@@ -56,7 +55,6 @@ namespace CyberPulse.UI
             if (!_isPaused) return;
             if (!_stylesBuilt) BuildStyles();
 
-            // Dark overlay
             var prev = GUI.color;
             GUI.color = new Color(0f, 0f, 0f, 0.78f);
             GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);

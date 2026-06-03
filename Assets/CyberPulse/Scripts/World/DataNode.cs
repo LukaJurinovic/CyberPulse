@@ -17,8 +17,8 @@ namespace CyberPulse.World
         [SerializeField] private ParticleSystem _activateVFX;
 
         [Header("Colors")]
-        [SerializeField] private Color _idleEmissive     = new Color(0f, 2.4f, 2.5f, 1f);   // cyan HDR
-        [SerializeField] private Color _siphonedEmissive = new Color(0f, 3f,   0.5f, 1f);   // green HDR
+        [SerializeField] private Color _idleEmissive     = new Color(0f, 2.4f, 2.5f, 1f);
+        [SerializeField] private Color _siphonedEmissive = new Color(0f, 3f,   0.5f, 1f);
 
         [Header("Layered progression")]
         [Tooltip("If set, the node starts hidden (renderer/light/collider off) until its ArenaLayer reveals it.")]
@@ -33,8 +33,6 @@ namespace CyberPulse.World
         private bool _siphoned;
         private static readonly int EmissionColorID = Shader.PropertyToID("_EmissionColor");
 
-        // ── Lifecycle ─────────────────────────────────────────────────────────
-
         private void Awake()
         {
             ApplyEmissive(_idleEmissive);
@@ -43,13 +41,9 @@ namespace CyberPulse.World
 
         private void Start()
         {
-            // In the layered scene the owning ArenaLayer collects and tracks nodes itself,
-            // so only fall back to the global manager when there is no layer parent.
             if (GetComponentInParent<ArenaLayer>() == null)
                 DataNodeManager.Register(this);
         }
-
-        // ── Hidden state (driven by ArenaLayer) ───────────────────────────────
 
         /// <summary>Hide the node — disables its renderer, light and collider.</summary>
         public void Hide()    => SetVisible(false);
@@ -62,20 +56,15 @@ namespace CyberPulse.World
             IsHidden = !visible;
             if (_renderer != null) _renderer.enabled = visible;
             if (_nodeLight != null) _nodeLight.enabled = visible;
-            // Don't re-enable the collider once siphoned (it's been consumed).
             var col = GetComponent<Collider>();
             if (col != null) col.enabled = visible && !_siphoned;
         }
-
-        // ── IDamageable ───────────────────────────────────────────────────────
 
         public void TakeDamage(int amount)
         {
             if (_siphoned) return;
             Activate();
         }
-
-        // ── Activation ────────────────────────────────────────────────────────
 
         private void Activate()
         {
@@ -92,7 +81,6 @@ namespace CyberPulse.World
             if (_activateVFX != null)
                 _activateVFX.Play();
 
-            // Disable collider so it can't be hit again and stops blocking bullets.
             GetComponent<Collider>().enabled = false;
 
             OnSiphoned?.Invoke();
@@ -101,7 +89,6 @@ namespace CyberPulse.World
         private void ApplyEmissive(Color color)
         {
             if (_renderer == null) return;
-            // MaterialPropertyBlock avoids creating a new material instance per node.
             var block = new MaterialPropertyBlock();
             _renderer.GetPropertyBlock(block);
             block.SetColor(EmissionColorID, color);

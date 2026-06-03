@@ -25,9 +25,8 @@ namespace CyberPulse.UI
         private float _currentGap;
         private Texture2D _pixel;
 
-        // Beat pulse state
-        private float _beatPulse;        // 0-1, spikes on OnBeat
-        private float _beatKillFlash;    // 0-1, spikes on confirmed on-beat kill
+        private float _beatPulse;
+        private float _beatKillFlash;
 
         private static readonly Color CyanBeat  = new Color(0.5f, 1f,   1f,   1f);
         private static readonly Color WhiteFlash = new Color(1f,   1f,   1f,   1f);
@@ -72,7 +71,6 @@ namespace CyberPulse.UI
             float targetGap  = _baseGap + targetExtra;
             _currentGap      = Mathf.Lerp(_currentGap, targetGap, Time.deltaTime * _gapSmoothing);
 
-            // Decay beat pulse effects
             _beatPulse    = Mathf.Max(0f, _beatPulse    - Time.deltaTime * 8f);
             _beatKillFlash = Mathf.Max(0f, _beatKillFlash - Time.deltaTime * 6f);
         }
@@ -81,7 +79,6 @@ namespace CyberPulse.UI
         {
             if (_pixel == null) return;
 
-            // Blend base colour toward beat-pulse effects.
             bool offRhythm = BeatReactor.Instance != null && BeatReactor.Instance.IsOffRhythm;
 
             Color crosshairColor;
@@ -102,16 +99,11 @@ namespace CyberPulse.UI
             float len = _lineLength;
             float w   = _lineWidth;
 
-            // Center dot
             DrawRect(cx - 1f, cy - 1f, 2f, 2f);
 
-            // Top
             DrawRect(cx - w * 0.5f, cy - gap - len, w, len);
-            // Bottom
             DrawRect(cx - w * 0.5f, cy + gap, w, len);
-            // Left
             DrawRect(cx - gap - len, cy - w * 0.5f, len, w);
-            // Right
             DrawRect(cx + gap, cy - w * 0.5f, len, w);
 
             GUI.color = Color.white;

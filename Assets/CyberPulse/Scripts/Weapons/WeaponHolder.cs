@@ -28,19 +28,11 @@ namespace CyberPulse.Weapons
         private int   _pendingIndex;
         private float _switchTimer;
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Public state
-        // ──────────────────────────────────────────────────────────────────────
-
         public WeaponBase ActiveWeapon => _weapons != null && _weapons.Length > 0
             ? _weapons[_activeIndex]
             : null;
 
         public int ActiveIndex => _activeIndex;
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Lifecycle
-        // ──────────────────────────────────────────────────────────────────────
 
         private void Awake()
         {
@@ -109,10 +101,6 @@ namespace CyberPulse.Weapons
             }
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Input handlers
-        // ──────────────────────────────────────────────────────────────────────
-
         private void OnFirePressed()
         {
             _isFiring = true;
@@ -150,10 +138,6 @@ namespace CyberPulse.Weapons
             int next = (_activeIndex + dir + _weapons.Length) % _weapons.Length;
             SwitchTo(next);
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Weapon switching
-        // ──────────────────────────────────────────────────────────────────────
 
         private void SwitchTo(int index)
         {

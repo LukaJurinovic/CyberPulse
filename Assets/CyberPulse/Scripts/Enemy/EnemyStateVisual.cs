@@ -14,9 +14,6 @@ namespace CyberPulse.Enemy
     {
         [SerializeField] private MeshRenderer _renderer;
 
-        // HDR colors driving the wireframe shader's _EdgeColor. Hues are deliberately
-        // spread across the spectrum so each state reads at a glance: blue (idle) →
-        // green (patrol) → orange (chase) → red (attack), with cyan for charging.
         private static readonly Color IdleColor     = new Color(0.3f,  0.7f, 1.6f);
         private static readonly Color PatrolColor   = new Color(0.2f,  1.6f, 0.4f);
         private static readonly Color ChaseColor    = new Color(2.8f,  0.9f, 0.05f);
@@ -25,7 +22,7 @@ namespace CyberPulse.Enemy
         private static readonly Color DeadColor     = new Color(0.08f, 0.08f, 0.08f);
 
         [SerializeField, Range(0.03f, 0.6f)]
-        private float _fillTint = 0.4f;    // body fill = state colour × this (bright enough that the whole mesh reads the state hue, not just the silhouette edge)
+        private float _fillTint = 0.4f;
 
         private const string WireframeShaderName = "CyberPulse/WireframeEnemy";
 
@@ -39,8 +36,6 @@ namespace CyberPulse.Enemy
         private float                 _hitFlashUntil;
         private bool                  _dead;
 
-        // One shared wireframe material across all enemies — per-enemy colour comes from
-        // the MaterialPropertyBlock, so sharing costs nothing and keeps batching intact.
         private static Material _sharedWireframe;
 
         private void Awake()
@@ -52,18 +47,13 @@ namespace CyberPulse.Enemy
             EnsureWireframeMaterial();
         }
 
-        // Enemy prefabs ship with a null material (the builder assigned a transient
-        // runtime Material that couldn't serialize into the prefab asset), so spawned
-        // wave enemies render with Unity's default grey material — which has no
-        // _EdgeColor/_FillColor for our property block to drive. Assign the wireframe
-        // material here so every enemy actually shows its state colour.
         private void EnsureWireframeMaterial()
         {
             if (_renderer == null) return;
 
             var mat = _renderer.sharedMaterial;
             if (mat != null && mat.shader != null && mat.shader.name == WireframeShaderName)
-                return; // already a proper wireframe material (e.g. in-scene placed enemies)
+                return;
 
             var shared = GetSharedWireframe();
             if (shared != null) _renderer.sharedMaterial = shared;
@@ -110,7 +100,6 @@ namespace CyberPulse.Enemy
 
         private void Update()
         {
-            // Brief white flash on hit
             if (Time.time < _hitFlashUntil)
             {
                 ApplyColor(Color.white * 4f);
@@ -119,7 +108,6 @@ namespace CyberPulse.Enemy
 
             if (_dead) return;
 
-            // Attack and Charging modes pulse the edge color
             if (_mode == EnemyVisualMode.Attack)
             {
                 float pulse = 0.75f + 0.25f * Mathf.Sin(Time.time * 12f);
@@ -158,8 +146,6 @@ namespace CyberPulse.Enemy
             if (_renderer == null) return;
             _renderer.GetPropertyBlock(_block);
             _block.SetColor(EdgeColorID, c);
-            // Tint the body fill too so the state colour reads across the whole mesh,
-            // not just the thin fresnel silhouette — critical at long sightlines.
             _block.SetColor(FillColorID, new Color(c.r * _fillTint, c.g * _fillTint, c.b * _fillTint, 1f));
             _renderer.SetPropertyBlock(_block);
         }

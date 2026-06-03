@@ -43,19 +43,17 @@ namespace CyberPulse.UI
         private const int OFN_FILEMUSTEXIST = 0x1000;
         private const int OFN_PATHMUSTEXIST = 0x0800;
         private const int OFN_HIDEREADONLY  = 0x0004;
-        // Prevents the dialog from changing Unity's working directory (which crashes the editor).
         private const int OFN_NOCHANGEDIR   = 0x0008;
 
         /// <summary>Opens a Windows file picker filtered to audio files. Returns the selected path or null.</summary>
         public static string OpenAudioFile()
         {
-            // Filter string: "Audio Files\0*.mp3;*.wav;*.ogg\0\0" — embedded nulls require manual wide-string build.
             byte[] filterBytes = BuildWideString("Audio Files\0*.mp3;*.wav;*.ogg\0\0");
             IntPtr filterPtr   = Marshal.AllocHGlobal(filterBytes.Length);
             Marshal.Copy(filterBytes, 0, filterPtr, filterBytes.Length);
 
             const int MaxPath  = 2048;
-            byte[]    fileBuf  = new byte[MaxPath * 2]; // wide chars
+            byte[]    fileBuf  = new byte[MaxPath * 2];
             IntPtr    filePtr  = Marshal.AllocHGlobal(fileBuf.Length);
             Marshal.Copy(fileBuf, 0, filePtr, fileBuf.Length);
 

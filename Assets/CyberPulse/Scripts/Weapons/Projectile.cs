@@ -19,7 +19,7 @@ namespace CyberPulse.Weapons
         [SerializeField] private float _lifetime      = 5f;
         [SerializeField] private int   _damage        = 40;
         [SerializeField] private LayerMask _hitMask   = ~0;
-        [SerializeField] private float _wallAoeRadius = 0f;   // >0 = AoE sphere on impact
+        [SerializeField] private float _wallAoeRadius = 0f;
 
         private Transform _homingTarget;
         private float     _homingStrength;
@@ -27,8 +27,6 @@ namespace CyberPulse.Weapons
         private Action    _onIntercept;
         private Rigidbody _rb;
         private bool      _hasHit;
-
-        // ── Runtime initialisation (call in the same frame as AddComponent) ────
 
         public void Init(float speed, int damage, LayerMask hitMask)
         {
@@ -50,8 +48,6 @@ namespace CyberPulse.Weapons
         /// <see cref="TakeDamage"/>. Used by homing missiles to reward interception.
         /// </summary>
         public void SetInterceptReward(Action callback) { _onIntercept = callback; }
-
-        // ── Lifecycle ─────────────────────────────────────────────────────────
 
         private void Awake()
         {
@@ -82,7 +78,6 @@ namespace CyberPulse.Weapons
             if (_hasHit) return;
             if ((_hitMask.value & (1 << collision.gameObject.layer)) == 0) return;
 
-            // Ricochet: bounce off surfaces that have no damageable component while bounces remain.
             if (_bouncesRemaining > 0 && collision.collider.GetComponentInParent<IDamageable>() == null)
             {
                 _bouncesRemaining--;
@@ -109,7 +104,6 @@ namespace CyberPulse.Weapons
             Destroy(gameObject);
         }
 
-        // Player weapons can shoot this down (1 hit)
         public bool IsDead => _hasHit;
 
         public void TakeDamage(int amount)

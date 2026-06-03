@@ -30,15 +30,11 @@ namespace CyberPulse.Systems
         private Coroutine _lerpRoutine;
         private Coroutine _killCamRoutine;
 
-        // ── Lifecycle ─────────────────────────────────────────────────────────
-
         private void Awake()
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
             Instance = this;
         }
-
-        // ── Public API ────────────────────────────────────────────────────────
 
         public void EnterSlowMo()
         {
@@ -69,8 +65,6 @@ namespace CyberPulse.Systems
 
         private IEnumerator KillCamRoutine()
         {
-            // Kill-cam is a purely visual slow-down — audio pitch is intentionally
-            // NOT changed here so music and SFX continue at normal speed.
             ApplyTimeScale(_killCamTimeScale);
             if (_slowMoVolume != null) _slowMoVolume.weight = 0.7f;
 
@@ -81,8 +75,6 @@ namespace CyberPulse.Systems
             IsKillCam       = false;
             _killCamRoutine = null;
         }
-
-        // ── Internal ──────────────────────────────────────────────────────────
 
         private void RestartLerp(float from, float to, float duration, bool enteringSlowMo)
         {
@@ -110,7 +102,6 @@ namespace CyberPulse.Systems
                 yield return null;
             }
 
-            // Snap to final values
             ApplyTimeScale(to);
             if (_slowMoVolume != null)
                 _slowMoVolume.weight = enteringSlowMo ? 1f : 0f;
@@ -120,7 +111,6 @@ namespace CyberPulse.Systems
         private static void ApplyTimeScale(float scale)
         {
             Time.timeScale      = scale;
-            // Always keep fixedDeltaTime in sync — critical for physics correctness.
             Time.fixedDeltaTime = scale * 0.02f;
         }
 
@@ -130,9 +120,6 @@ namespace CyberPulse.Systems
             foreach (var src in sources)
             {
                 if (src == null) continue;
-                // Skip looping sources (background music) — they should always
-                // play at normal pitch so the music never drops out during slow-mo
-                // or kill-cam. One-shot SFX (non-looping) are pitch-shifted as usual.
                 if (src.loop) continue;
                 src.pitch = timeScale;
             }

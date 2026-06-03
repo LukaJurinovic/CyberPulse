@@ -13,24 +13,17 @@ namespace CyberPulse.Editor
     /// </summary>
     public static class MovementTestSceneBuilder
     {
-        // ──────────────────────────────────────────────────────────────────────
-        // Constants
-        // ──────────────────────────────────────────────────────────────────────
 
         private const string ScenePath   = "Assets/Scenes/MovementTestScene.unity";
         private const string GroundLayer = "Ground";
 
         private static readonly Color CyanHDR     = new Color(0f, 0.961f, 1f, 1f);
-        private static readonly Color CyanEmit    = new Color(0f, 2.4f,  2.5f, 1f); // HDR > 1 for bloom
+        private static readonly Color CyanEmit    = new Color(0f, 2.4f,  2.5f, 1f);
         private static readonly Color DarkBg      = new Color(0.04f, 0.04f, 0.08f, 1f);
         private static readonly Color WallColor   = new Color(0.08f, 0.08f, 0.14f, 1f);
         private static readonly Color PlatColor   = new Color(0.05f, 0.12f, 0.18f, 1f);
         private static readonly Color MarkerColor = new Color(0.12f, 0.05f, 0.18f, 1f);
         private static readonly Color PillarColor = new Color(0.06f, 0.06f, 0.12f, 1f);
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Entry point
-        // ──────────────────────────────────────────────────────────────────────
 
         [MenuItem("CyberPulse/Build Movement Test Scene")]
         public static void BuildScene()
@@ -42,7 +35,6 @@ namespace CyberPulse.Editor
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
-            // Ambient & fog
             RenderSettings.ambientMode  = AmbientMode.Flat;
             RenderSettings.ambientLight = new Color(0.03f, 0.03f, 0.06f);
             RenderSettings.fog          = false;
@@ -71,52 +63,37 @@ namespace CyberPulse.Editor
                       "Drag the Player prefab to (0, 1, 0) and press Play.");
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // 1. Ground floor — 40×40 emissive cyan grid
-        // ──────────────────────────────────────────────────────────────────────
-
         private static void BuildGround(int layer)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Plane);
             go.name = "Ground";
             go.layer = layer;
-            go.transform.localScale = new Vector3(4f, 1f, 4f); // plane is 10×10, ×4 = 40×40
+            go.transform.localScale = new Vector3(4f, 1f, 4f);
 
             var mr = go.GetComponent<MeshRenderer>();
             mr.sharedMaterial = CreateGridMaterial();
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // 2. Wall-slide test corridor — two parallel walls at X=10
-        // ──────────────────────────────────────────────────────────────────────
 
         private static void BuildWallSlideCorridors(int layer)
         {
             var root = new GameObject("WallSlide_Corridor");
             root.transform.position = new Vector3(10f, 0f, 0f);
 
-            // Wall A (+X side)
             CreateBox(root, "WallA",
                 new Vector3( 1.75f, 2.5f, 0f),
                 new Vector3(0.25f, 5f, 15f),
                 WallColor, layer);
 
-            // Wall B (-X side)
             CreateBox(root, "WallB",
                 new Vector3(-1.75f, 2.5f, 0f),
                 new Vector3(0.25f, 5f, 15f),
                 WallColor, layer);
 
-            // Floor patch inside corridor so the player can run in
             CreateBox(root, "CorridorFloor",
                 new Vector3(0f, -0.05f, 0f),
                 new Vector3(3f, 0.1f, 15f),
                 DarkBg, layer);
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // 3. Jump platforms — 5 at increasing heights, spaced on X
-        // ──────────────────────────────────────────────────────────────────────
 
         private static void BuildJumpPlatforms(int layer)
         {
@@ -136,10 +113,6 @@ namespace CyberPulse.Editor
             }
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // 4. Dash distance markers — thin slabs on +Z with TMP labels
-        // ──────────────────────────────────────────────────────────────────────
-
         private static void BuildDashMarkers(int layer)
         {
             var root = new GameObject("DashMarkers");
@@ -149,13 +122,11 @@ namespace CyberPulse.Editor
 
             foreach (int d in distances)
             {
-                // Thin vertical slab
                 var slab = CreateBox(root, $"Marker_{d}m",
                     new Vector3(0f, 1.5f, d),
                     new Vector3(2f, 3f, 0.1f),
                     MarkerColor, layer);
 
-                // TMP label
                 var labelGO = new GameObject($"Label_{d}m");
                 labelGO.transform.SetParent(slab.transform, false);
                 labelGO.transform.localPosition = new Vector3(0f, 0f, -0.1f);
@@ -170,10 +141,6 @@ namespace CyberPulse.Editor
                 tmp.rectTransform.sizeDelta = new Vector2(2f, 1f);
             }
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // 5. Air-zone corner pillars — judge distance / practice air strafing
-        // ──────────────────────────────────────────────────────────────────────
 
         private static void BuildAirZonePillars(int layer)
         {
@@ -197,13 +164,8 @@ namespace CyberPulse.Editor
             }
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // 6. Lighting
-        // ──────────────────────────────────────────────────────────────────────
-
         private static void BuildLighting()
         {
-            // Directional — dim, moody overhead
             var dirGO = new GameObject("Directional Light");
             dirGO.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
             var dirLight = dirGO.AddComponent<Light>();
@@ -212,7 +174,6 @@ namespace CyberPulse.Editor
             dirLight.color     = new Color(0.8f, 0.8f, 1f);
             dirLight.shadows   = LightShadows.Soft;
 
-            // Four cyan point lights at corners of the main floor
             float r = 18f;
             Vector3[] positions =
             {
@@ -235,16 +196,11 @@ namespace CyberPulse.Editor
             }
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // 7. Spawn marker — visual only, player prefab goes here manually
-        // ──────────────────────────────────────────────────────────────────────
-
         private static void PlaceSpawnMarker()
         {
             var go = new GameObject("SpawnPoint");
             go.transform.position = new Vector3(0f, 0f, 0f);
 
-            // Small sphere so it's visible in the scene view
             var sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             sphere.name = "SpawnMarker_Visual";
             sphere.transform.SetParent(go.transform, false);
@@ -258,10 +214,6 @@ namespace CyberPulse.Editor
             Debug.Log("[MovementTestSceneBuilder] Spawn marker at (0, 0, 0). " +
                       "Place your Player prefab at (0, 1, 0).");
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Helpers
-        // ──────────────────────────────────────────────────────────────────────
 
         /// <summary>Creates a cube primitive with a given size, colour, and layer under a parent.</summary>
         private static GameObject CreateBox(GameObject parent, string name,
@@ -277,10 +229,6 @@ namespace CyberPulse.Editor
             return go;
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Material factories (all inline — no external assets required)
-        // ──────────────────────────────────────────────────────────────────────
-
         private static Material CreateGridMaterial()
         {
             var mat = new Material(GetUrpLitShader());
@@ -294,7 +242,6 @@ namespace CyberPulse.Editor
             mat.SetColor("_EmissionColor", CyanEmit * 0.4f);
             mat.EnableKeyword("_EMISSION");
 
-            // Tiling: the plane is 40 units, so tile 40 times for 1 unit grid squares.
             mat.SetTextureScale("_BaseMap", new Vector2(40f, 40f));
             mat.SetTextureScale("_EmissionMap", new Vector2(40f, 40f));
 
@@ -321,7 +268,7 @@ namespace CyberPulse.Editor
         {
             var shader = Shader.Find("Universal Render Pipeline/Lit");
             if (shader == null)
-                shader = Shader.Find("Standard"); // graceful fallback for non-URP projects
+                shader = Shader.Find("Standard");
             return shader;
         }
 

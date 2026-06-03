@@ -36,10 +36,6 @@ namespace CyberPulse.Editor
         private static readonly Color WallCol   = new Color(0.08f, 0.08f,  0.15f, 1f);
         private static readonly Color PlatCol   = new Color(0.05f, 0.12f,  0.20f, 1f);
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Entry point
-        // ──────────────────────────────────────────────────────────────────────
-
         [MenuItem("CyberPulse/► Bootstrap Full Playable Scene")]
         public static void Bootstrap()
         {
@@ -74,10 +70,6 @@ namespace CyberPulse.Editor
             Debug.Log("[CyberPulse] Scene ready — press Play to test movement.");
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Layer setup
-        // ──────────────────────────────────────────────────────────────────────
-
         private static int EnsureLayer(string name)
         {
             int idx = LayerMask.NameToLayer(name);
@@ -102,10 +94,6 @@ namespace CyberPulse.Editor
             return 0;
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // InputReader asset
-        // ──────────────────────────────────────────────────────────────────────
-
         private static InputReader GetOrCreateInputReader()
         {
             var existing = AssetDatabase.LoadAssetAtPath<InputReader>(InputReaderPath);
@@ -118,15 +106,10 @@ namespace CyberPulse.Editor
             return reader;
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Environment
-        // ──────────────────────────────────────────────────────────────────────
-
         private static void BuildEnvironment(int groundLayerIdx)
         {
             var env = new GameObject("Environment");
 
-            // Ground — 40×40 grid plane
             var ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
             ground.name  = "Ground";
             ground.layer = groundLayerIdx;
@@ -134,7 +117,6 @@ namespace CyberPulse.Editor
             ground.transform.localScale = new Vector3(4f, 1f, 4f);
             ground.GetComponent<MeshRenderer>().sharedMaterial = MakeGridMaterial();
 
-            // Wall-slide corridor at X = 10
             var corridor = new GameObject("WallSlide_Corridor");
             corridor.transform.SetParent(env.transform, false);
             corridor.transform.position = new Vector3(10f, 0f, 0f);
@@ -142,7 +124,6 @@ namespace CyberPulse.Editor
             MakeBox(corridor, "WallA", new Vector3( 1.75f, 2.5f, 0f), new Vector3(0.25f, 5f, 14f), WallCol, groundLayerIdx);
             MakeBox(corridor, "WallB", new Vector3(-1.75f, 2.5f, 0f), new Vector3(0.25f, 5f, 14f), WallCol, groundLayerIdx);
 
-            // Jump platforms — increasing heights, spaced on -X axis
             var platforms = new GameObject("JumpPlatforms");
             platforms.transform.SetParent(env.transform, false);
             platforms.transform.position = new Vector3(-8f, 0f, 4f);
@@ -153,7 +134,6 @@ namespace CyberPulse.Editor
                     new Vector3(i * 4f, heights[i] + 0.1f, 0f),
                     new Vector3(3f, 0.2f, 3f), PlatCol, groundLayerIdx);
 
-            // Dash markers — thin slabs along +Z, labelled with distance
             var markers = new GameObject("DashMarkers");
             markers.transform.SetParent(env.transform, false);
 
@@ -164,7 +144,6 @@ namespace CyberPulse.Editor
                     new Vector3(0f, 1.5f, d), new Vector3(2f, 3f, 0.1f),
                     new Color(0.12f, 0.05f, 0.18f), groundLayerIdx);
 
-                // TMP label
                 var label = new GameObject($"Label_{d}m");
                 label.transform.SetParent(slab.transform, false);
                 label.transform.localPosition = new Vector3(0f, 0.5f, -0.1f);
@@ -176,10 +155,6 @@ namespace CyberPulse.Editor
                 tmp.rectTransform.sizeDelta = new Vector2(2f, 1f);
             }
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Lighting
-        // ──────────────────────────────────────────────────────────────────────
 
         private static void BuildLighting()
         {
@@ -209,44 +184,33 @@ namespace CyberPulse.Editor
             }
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Player hierarchy
-        // ──────────────────────────────────────────────────────────────────────
-
         private static GameObject BuildPlayer(InputReader inputReader, int groundMask)
         {
-            // ── Root ──────────────────────────────────────────────────────────
             var player = new GameObject("Player");
             player.transform.position = new Vector3(0f, 1f, 0f);
 
-            // Rigidbody
             var rb = player.AddComponent<Rigidbody>();
             rb.mass                  = 1f;
             rb.useGravity            = true;
             rb.interpolation         = RigidbodyInterpolation.Interpolate;
             rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
             rb.constraints           = RigidbodyConstraints.FreezeRotation;
-            // drag is 0 at start — PlayerController sets it based on ground state
 
-            // CapsuleCollider
             var col = player.AddComponent<CapsuleCollider>();
             col.height = 1.8f;
             col.radius = 0.4f;
             col.center = new Vector3(0f, 0.9f, 0f);
 
-            // Script components
             var controller = player.AddComponent<PlayerController>();
             var dash       = player.AddComponent<DashAbility>();
             player.AddComponent<PlayerStats>();
             player.AddComponent<PlayerDeathHandler>();
 
-            // ── CameraPivot ───────────────────────────────────────────────────
             var pivotGO = new GameObject("CameraPivot");
             pivotGO.transform.SetParent(player.transform, false);
             pivotGO.transform.localPosition = new Vector3(0f, 1.65f, 0f);
             var camScript = pivotGO.AddComponent<PlayerCamera>();
 
-            // ── MainCamera ────────────────────────────────────────────────────
             var camGO = new GameObject("MainCamera");
             camGO.transform.SetParent(pivotGO.transform, false);
             camGO.transform.localPosition = Vector3.zero;
@@ -258,10 +222,8 @@ namespace CyberPulse.Editor
             cam.fieldOfView   = 75f;
             camGO.AddComponent<AudioListener>();
 
-            // Enable URP post-processing via reflection (avoids hard package dep)
             TryEnablePostProcessing(camGO);
 
-            // ── FX / DashParticles ────────────────────────────────────────────
             var fxRoot = new GameObject("FX");
             fxRoot.transform.SetParent(player.transform, false);
 
@@ -270,7 +232,6 @@ namespace CyberPulse.Editor
             var ps = psGO.AddComponent<ParticleSystem>();
             ConfigureDashParticles(ps);
 
-            // ── Wire all SerializedFields ─────────────────────────────────────
             LinkComponent(controller, so =>
             {
                 so.FindProperty("_input").objectReferenceValue            = inputReader;
@@ -293,12 +254,10 @@ namespace CyberPulse.Editor
                 so.FindProperty("_camera").objectReferenceValue      = cam;
             });
 
-            // ── WeaponSocket (child of MainCamera) ────────────────────────────
             var socketGO = new GameObject("WeaponSocket");
             socketGO.transform.SetParent(camGO.transform, false);
             socketGO.transform.localPosition = new Vector3(0.18f, -0.22f, 0.35f);
 
-            // Default weapon: Assault Rifle (HitscanWeapon)
             var rifleGO = new GameObject("Weapon_AssaultRifle");
             rifleGO.transform.SetParent(socketGO.transform, false);
 
@@ -326,7 +285,6 @@ namespace CyberPulse.Editor
                 so.FindProperty("_controller").objectReferenceValue  = controller;
             });
 
-            // WeaponHolder on player root
             var holder = player.AddComponent<WeaponHolder>();
             LinkComponent(holder, so =>
             {
@@ -340,17 +298,12 @@ namespace CyberPulse.Editor
             return player;
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Game systems
-        // ──────────────────────────────────────────────────────────────────────
-
         private static void BuildSystems()
         {
             var go = new GameObject("GameSystems");
             go.AddComponent<GameManager>();
             go.AddComponent<TraceMeter>();
 
-            // Spawn points — four corners of the play area.
             var spawnRoot = new GameObject("SpawnPoints");
             Vector3[] spawnPositions = {
                 new Vector3( 8f, 1f,  8f),
@@ -368,8 +321,6 @@ namespace CyberPulse.Editor
             }
 
             var spawner = go.AddComponent<EnemySpawner>();
-            // _autoStart on so the spawner works immediately for testing
-            // (replace with GameManager.Purge phase trigger once data nodes are in).
             LinkComponent(spawner, so =>
             {
                 so.FindProperty("_autoStart").boolValue = true;
@@ -379,10 +330,6 @@ namespace CyberPulse.Editor
                     pts.GetArrayElementAtIndex(i).objectReferenceValue = spawnTransforms[i];
             });
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Debug UI object
-        // ──────────────────────────────────────────────────────────────────────
 
         private static void BuildDebugUI(GameObject player)
         {
@@ -404,10 +351,6 @@ namespace CyberPulse.Editor
             LinkComponent(hud, so =>
                 so.FindProperty("_playerStats").objectReferenceValue = player.GetComponent<PlayerStats>());
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Particle system configuration
-        // ──────────────────────────────────────────────────────────────────────
 
         private static void ConfigureDashParticles(ParticleSystem ps)
         {
@@ -444,10 +387,6 @@ namespace CyberPulse.Editor
             renderer.renderMode    = ParticleSystemRenderMode.Billboard;
             renderer.sharedMaterial = MakeParticleMaterial();
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Material helpers
-        // ──────────────────────────────────────────────────────────────────────
 
         private static Material MakeGridMaterial()
         {
@@ -500,10 +439,6 @@ namespace CyberPulse.Editor
             return tex;
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Primitive helper
-        // ──────────────────────────────────────────────────────────────────────
-
         private static GameObject MakeBox(GameObject parent, string name,
             Vector3 localPos, Vector3 size, Color color, int layer)
         {
@@ -517,10 +452,6 @@ namespace CyberPulse.Editor
             return go;
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        // SerializedObject helper — sets fields then applies
-        // ──────────────────────────────────────────────────────────────────────
-
         private static void LinkComponent<T>(T component, Action<SerializedObject> assign)
             where T : UnityEngine.Object
         {
@@ -528,10 +459,6 @@ namespace CyberPulse.Editor
             assign(so);
             so.ApplyModifiedProperties();
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // URP post-processing via reflection (avoids hard package dependency)
-        // ──────────────────────────────────────────────────────────────────────
 
         private static void TryEnablePostProcessing(GameObject cameraGO)
         {
@@ -549,10 +476,6 @@ namespace CyberPulse.Editor
             var prop = urpDataType.GetProperty("renderPostProcessing");
             prop?.SetValue(data, true);
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Muzzle flash particle configuration
-        // ──────────────────────────────────────────────────────────────────────
 
         private static void ConfigureMuzzleFlash(ParticleSystem ps)
         {
@@ -589,10 +512,6 @@ namespace CyberPulse.Editor
             renderer.renderMode    = ParticleSystemRenderMode.Billboard;
             renderer.sharedMaterial = MakeParticleMaterial();
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Folder utilities
-        // ──────────────────────────────────────────────────────────────────────
 
         private static void EnsureFolder(string path)
         {

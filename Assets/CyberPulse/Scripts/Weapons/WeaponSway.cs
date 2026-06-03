@@ -86,7 +86,6 @@ namespace CyberPulse.Weapons
             }
             else
             {
-                // Idle breathing
                 float breath = Mathf.Sin(Time.time * _breathFrequency * Mathf.PI * 2f) * _breathAmplitude;
                 transform.localPosition += new Vector3(0f, breath, 0f);
             }

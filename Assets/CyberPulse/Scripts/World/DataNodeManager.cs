@@ -17,9 +17,8 @@ namespace CyberPulse.World
         public static DataNodeManager Instance { get; private set; }
 
         [SerializeField, Range(0f, 1f)]
-        private float _elevatedFraction = 0.4f;  // share of nodes relocated onto Tower/Platform tops
+        private float _elevatedFraction = 0.4f;
 
-        // Nodes that called Register() before this manager's Awake ran.
         private static readonly List<DataNode> _pending = new();
 
         private readonly List<DataNode> _nodes = new();
@@ -31,8 +30,6 @@ namespace CyberPulse.World
 
         /// <summary>0–1 fraction of nodes siphoned. Suitable for a progress bar.</summary>
         public float Progress => _nodes.Count > 0 ? (float)_siphonedCount / _nodes.Count : 0f;
-
-        // ── Lifecycle ─────────────────────────────────────────────────────────
 
         private void Awake()
         {
@@ -58,22 +55,18 @@ namespace CyberPulse.World
 
         private void Start()
         {
-            // Arena may have generated before this component subscribed (script order),
-            // in which case relocate right away.
             if (!_relocated
                 && ProceduralArenaGenerator.Instance != null
                 && ProceduralArenaGenerator.Instance.ElevatedAnchors.Count > 0)
                 RelocateToElevated();
         }
 
-        // ── Registration (called from DataNode.Start) ─────────────────────────
-
         public static void Register(DataNode node)
         {
             if (Instance != null)
                 Instance.AddNode(node);
             else
-                _pending.Add(node);  // manager not awake yet — queued for Awake()
+                _pending.Add(node);
         }
 
         private void AddNode(DataNode node)

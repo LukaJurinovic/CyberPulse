@@ -25,15 +25,13 @@ namespace CyberPulse.UI
         [SerializeField] private float _flickerInterval = 4f;
 
         [Header("Song selection")]
-        [SerializeField] private AudioClip[] _songs;          // bundled tracks wired by MainMenuBuilder
-        [SerializeField] private AudioSource _menuMusicSource; // wired by MainMenuBuilder (or found via GetComponent)
+        [SerializeField] private AudioClip[] _songs;
+        [SerializeField] private AudioSource _menuMusicSource;
 
         private bool _busy;
 
-        // Bundled track selection (-1 when a user track is selected).
         private int    _selectedBundled = 0;
 
-        // User-imported track selection (null when a bundled track is selected).
         private string _selectedUserPath;
 
         private string[]  _userTrackPaths = new string[0];
@@ -45,8 +43,6 @@ namespace CyberPulse.UI
 
         private static readonly string[] AudioExtensions = { ".mp3", ".wav", ".ogg" };
 
-        // ── Lifecycle ─────────────────────────────────────────────────────────
-
         private void Start()
         {
             if (_fadePanel != null)
@@ -55,26 +51,20 @@ namespace CyberPulse.UI
             if (_titleText != null)
                 StartCoroutine(TitleFlicker());
 
-            // Fall back to finding the AudioSource on the same GO if not wired by the builder.
             if (_menuMusicSource == null)
                 _menuMusicSource = GetComponent<AudioSource>();
 
             ScanUserMusicFolder();
 
-            // Default to first bundled track.
             if (_songs != null && _songs.Length > 0)
             {
                 _selectedBundled  = 0;
                 SongSelection.SongName = _songs[0] != null ? _songs[0].name : null;
                 SongSelection.FilePath = null;
-                // Ensure the menu music starts on this track (builder sets songs[0] by default,
-                // but this covers the case where playOnAwake was not set).
                 if (_menuMusicSource != null && _songs[0] != null && !_menuMusicSource.isPlaying)
                     PlayMenuTrack(_songs[0]);
             }
         }
-
-        // ── Public API (wired to button OnClick in builder) ───────────────────
 
         public void OnStartGame()
         {
@@ -91,8 +81,6 @@ namespace CyberPulse.UI
             StartCoroutine(QuitSequence());
         }
 
-        // ── Track picker (OnGUI, left panel) ──────────────────────────────────
-
         private void OnGUI()
         {
             if (_busy) return;
@@ -103,23 +91,18 @@ namespace CyberPulse.UI
             float x        = sw * 0.06f;
             float panelTop = sh * 0.38f;
 
-            // ── Header ────────────────────────────────────────────────────────
             GUI.Label(new Rect(x, panelTop, panelW, 26f), "SELECT TRACK", _songHeader);
 
-            // ── Scrollable list ───────────────────────────────────────────────
             float listH    = sh * 0.38f;
             var   listRect = new Rect(x, panelTop + 36f, panelW, listH);
 
-            // Calculate inner content height.
             int totalRows  = BundledCount() + _userTrackPaths.Length;
-            // Extra rows: "BUNDLED" section header + (optionally) "IMPORTED" section header.
             int sectionHeaders = 1 + (_userTrackPaths.Length > 0 ? 1 : 0);
             float innerH   = Mathf.Max(listH, (totalRows + sectionHeaders) * 38f + 16f);
 
             _scrollPos = GUI.BeginScrollView(listRect, _scrollPos, new Rect(0, 0, panelW - 16f, innerH));
             float iy = 8f;
 
-            // ── Bundled tracks ────────────────────────────────────────────────
             GUI.Label(new Rect(0, iy, panelW - 16f, 22f), "BUNDLED", _songSection);
             iy += 28f;
 
@@ -140,7 +123,6 @@ namespace CyberPulse.UI
                 }
             }
 
-            // ── User-imported tracks ───────────────────────────────────────────
             if (_userTrackPaths.Length > 0)
             {
                 iy += 8f;
@@ -164,7 +146,6 @@ namespace CyberPulse.UI
 
             GUI.EndScrollView();
 
-            // ── Buttons below the list ─────────────────────────────────────────
             float btnY = panelTop + 36f + listH + 8f;
 
             if (GUI.Button(new Rect(x, btnY, panelW, 34f), "[ IMPORT TRACK ]", _importBtn))
@@ -173,8 +154,6 @@ namespace CyberPulse.UI
             if (GUI.Button(new Rect(x, btnY + 42f, panelW, 34f), "[ OPEN MUSIC FOLDER ]", _importBtn))
                 OpenMusicFolder();
         }
-
-        // ── Track management ──────────────────────────────────────────────────
 
         private void ScanUserMusicFolder()
         {
@@ -207,7 +186,6 @@ namespace CyberPulse.UI
 
             ScanUserMusicFolder();
 
-            // Auto-select the newly imported track.
             _selectedUserPath = dest;
         }
 
@@ -242,7 +220,6 @@ namespace CyberPulse.UI
             using var req = UnityWebRequestMultimedia.GetAudioClip(uri, type);
             yield return req.SendWebRequest();
 
-            // Only play if the user hasn't switched away during the load.
             if (req.result == UnityWebRequest.Result.Success && _selectedUserPath == path)
                 PlayMenuTrack(DownloadHandlerAudioClip.GetContent(req));
             else if (req.result != UnityWebRequest.Result.Success)
@@ -276,8 +253,6 @@ namespace CyberPulse.UI
             foreach (var c in _songs) if (c != null) n++;
             return n;
         }
-
-        // ── Coroutines ────────────────────────────────────────────────────────
 
         private IEnumerator LoadGame()
         {
@@ -332,8 +307,6 @@ namespace CyberPulse.UI
                 }
             }
         }
-
-        // ── Styles ────────────────────────────────────────────────────────────
 
         private void EnsureSongStyles()
         {

@@ -36,8 +36,6 @@ namespace CyberPulse.Weapons
                 hit.collider.GetComponentInParent<IDamageable>()?.TakeDamage(damage);
         }
 
-        // ── Ricochet special: slow projectile that bounces off up to 2 walls ──
-
         public override void TriggerSpecial()
         {
             if (_lastCameraTransform == null) return;

@@ -16,13 +16,13 @@ namespace CyberPulse.World
     [RequireComponent(typeof(Collider))]
     public class LockedDoor : MonoBehaviour
     {
-        [SerializeField] private Renderer  _panel;     // forcefield visual spanning the opening
-        [SerializeField] private Collider  _blocker;   // solid collider blocking the opening while locked
+        [SerializeField] private Renderer  _panel;
+        [SerializeField] private Collider  _blocker;
         [SerializeField] private LayerMask _playerLayer;
 
         [Header("Colours (HDR for Bloom)")]
-        [SerializeField] private Color _lockedColor   = new Color(3.0f, 0.15f, 0.35f, 1f);  // red
-        [SerializeField] private Color _unlockedColor = new Color(0.1f, 3.0f,  1.2f,  1f);  // green
+        [SerializeField] private Color _lockedColor   = new Color(3.0f, 0.15f, 0.35f, 1f);
+        [SerializeField] private Color _unlockedColor = new Color(0.1f, 3.0f,  1.2f,  1f);
 
         public bool IsLocked { get; private set; } = true;
 
@@ -66,7 +66,6 @@ namespace CyberPulse.World
         private void ApplyVisual(Color c, bool sealed_)
         {
             if (_panel == null) return;
-            // Hide the panel entirely when open so the opening reads as passable.
             _panel.enabled = sealed_;
             if (!sealed_) return;
 

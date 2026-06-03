@@ -59,7 +59,6 @@ namespace CyberPulse.Systems
             StartCoroutine(ReloadAfterDelay(_winRestartDelay));
         }
 
-        // Unscaled time so the scene reloads even if timeScale was zeroed by a kill-cam effect.
         private IEnumerator ReloadAfterDelay(float delay)
         {
             yield return new WaitForSecondsRealtime(delay);

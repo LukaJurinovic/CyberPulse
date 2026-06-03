@@ -22,18 +22,16 @@ namespace CyberPulse.Systems
         [SerializeField] private AudioSource _actionSrc;
 
         [Header("Blend thresholds (0 – 1 normalised)")]
-        [SerializeField] private float _blendStartNorm = 0.5f;   // trace where crossfade begins
-        [SerializeField] private float _blendEndNorm   = 0.8f;   // trace where action is fully in
+        [SerializeField] private float _blendStartNorm = 0.5f;
+        [SerializeField] private float _blendEndNorm   = 0.8f;
 
         [Header("Smoothing")]
-        [SerializeField] private float _blendSpeed = 1.5f;       // blend units per second
+        [SerializeField] private float _blendSpeed = 1.5f;
 
         [Header("Startup")]
-        [SerializeField] private bool _playOnStart = true;       // LoadingController sets false and calls BeginPlayback() after analysis
+        [SerializeField] private bool _playOnStart = true;
 
-        private float _blend;   // 0 = ambient only · 1 = action only
-
-        // ── Lifecycle ─────────────────────────────────────────────────────────
+        private float _blend;
 
         private void Start()
         {
@@ -51,14 +49,13 @@ namespace CyberPulse.Systems
 
             if (_actionSrc != null)
             {
-                // Sync position so same-clip setup doesn't create phasing.
                 if (_ambientSrc != null && _actionSrc.clip == _ambientSrc.clip)
                     _actionSrc.timeSamples = _ambientSrc.timeSamples;
 
                 if (!_actionSrc.isPlaying)
                     _actionSrc.Play();
 
-                _actionSrc.volume = 0f; // guarantee silent until crossfade starts
+                _actionSrc.volume = 0f;
             }
         }
 

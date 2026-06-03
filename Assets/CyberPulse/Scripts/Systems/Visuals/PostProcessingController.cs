@@ -28,10 +28,7 @@ namespace CyberPulse.Systems
         [SerializeField] private PlayerStats  _playerStats;
         [SerializeField] private PlayerCamera _playerCamera;
 
-        // CA weight decays from spike → 0 each frame
         private float _damageVolumeWeight;
-
-        // ── Lifecycle ─────────────────────────────────────────────────────────
 
         private void Start()
         {
@@ -51,13 +48,10 @@ namespace CyberPulse.Systems
 
         private void Update()
         {
-            // Decay the damage volume weight back to 0 each frame
             _damageVolumeWeight = Mathf.Max(0f, _damageVolumeWeight - Time.deltaTime * 3.5f);
             if (_damageVolume != null)
                 _damageVolume.weight = _damageVolumeWeight;
         }
-
-        // ── Event handlers ────────────────────────────────────────────────────
 
         private void OnPlayerDamaged(int amount)
         {

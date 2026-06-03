@@ -23,7 +23,7 @@ namespace CyberPulse.Enemy
 
         [Header("Limits")]
         [SerializeField] private int _maxLiveEnemies = 6;
-        [SerializeField] private int _totalToSpawn   = 20; // 0 = unlimited
+        [SerializeField] private int _totalToSpawn   = 20;
 
         [Header("Debug")]
         [SerializeField] private bool _autoStart = false;
@@ -33,8 +33,6 @@ namespace CyberPulse.Enemy
         private bool _running;
         private Coroutine _spawnRoutine;
         private readonly System.Collections.Generic.List<EnemyHealth> _trackedHealth = new();
-
-        // ── Lifecycle ─────────────────────────────────────────────────────────
 
         private void Start()
         {
@@ -52,8 +50,6 @@ namespace CyberPulse.Enemy
             _trackedHealth.Clear();
         }
 
-        // ── Public API ────────────────────────────────────────────────────────
-
         public void StartSpawning()
         {
             if (_running) return;
@@ -68,15 +64,11 @@ namespace CyberPulse.Enemy
             _spawnRoutine = null;
         }
 
-        // ── Phase listener ────────────────────────────────────────────────────
-
         private void OnPhaseChanged(GamePhase phase)
         {
             if (phase == GamePhase.Purge)  StartSpawning();
             else                           StopSpawning();
         }
-
-        // ── Spawn loop ────────────────────────────────────────────────────────
 
         private IEnumerator SpawnLoop()
         {
@@ -86,7 +78,6 @@ namespace CyberPulse.Enemy
             {
                 bool limitReached = _totalToSpawn > 0 && _spawnedCount >= _totalToSpawn;
 
-                // All enemies from this wave dead → advance to Extract.
                 if (limitReached && _liveCount == 0)
                 {
                     GameManager.Instance?.SetPhase(GamePhase.Extract);
@@ -123,8 +114,6 @@ namespace CyberPulse.Enemy
         }
 
         private void HandleEnemyDeath() => _liveCount = Mathf.Max(0, _liveCount - 1);
-
-        // ── Gizmos ────────────────────────────────────────────────────────────
 
         private void OnDrawGizmosSelected()
         {

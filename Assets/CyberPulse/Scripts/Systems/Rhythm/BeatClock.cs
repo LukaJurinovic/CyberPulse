@@ -27,10 +27,8 @@ namespace CyberPulse.Systems
         [SerializeField] private float _defaultBPM = 120f;
         [SerializeField, Range(0.05f, 0.35f)] private float _beatWindowSize = 0.15f;
 
-        // ── Public state ──────────────────────────────────────────────────────
-
         public float BPM            { get; private set; }
-        public float BeatInterval   { get; private set; }   // seconds per beat
+        public float BeatInterval   { get; private set; }
 
         /// <summary>0-1 within the current beat. 0 = beat crossing, 0.5 = halfway.</summary>
         public float BeatPhase      { get; private set; }
@@ -50,8 +48,6 @@ namespace CyberPulse.Systems
         private float _prevBeatPhase;
         private bool  _prevOnBeat;
 
-        // ── Lifecycle ─────────────────────────────────────────────────────────
-
         private void Awake()
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -63,8 +59,6 @@ namespace CyberPulse.Systems
         {
             if (SongAnalyzer.Instance == null) return;
 
-            // Apply now if analysis already finished (e.g. a synchronous manual-BPM
-            // path completed before this Start ran); still subscribe for any re-analysis.
             if (SongAnalyzer.Instance.IsAnalyzed)
                 ApplyBPM(SongAnalyzer.Instance.Profile.BPM);
             SongAnalyzer.Instance.OnAnalysisComplete += OnAnalysisComplete;
@@ -76,8 +70,6 @@ namespace CyberPulse.Systems
                 SongAnalyzer.Instance.OnAnalysisComplete -= OnAnalysisComplete;
         }
 
-        // ── Public API ────────────────────────────────────────────────────────
-
         /// <summary>Set BPM and optional AudioSource at runtime (e.g. from a loading screen).</summary>
         public void Initialize(float bpm, AudioSource source = null)
         {
@@ -86,8 +78,6 @@ namespace CyberPulse.Systems
         }
 
         public void SetMusicSource(AudioSource source) => _musicSource = source;
-
-        // ── Update ────────────────────────────────────────────────────────────
 
         private void Update()
         {
@@ -98,25 +88,20 @@ namespace CyberPulse.Systems
                 ? (songTime % BeatInterval) / BeatInterval
                 : 0f;
 
-            // DistanceToBeat: 0 at the crossing, 1 halfway between.
             float d = Mathf.Min(BeatPhase, 1f - BeatPhase);
             DistanceToBeat = d / 0.5f;
 
             bool nowOnBeat = BeatPhase < _beatWindowSize || BeatPhase > (1f - _beatWindowSize);
             IsOnBeat = nowOnBeat;
 
-            // Beat crossing: phase wrapped from near-1 to near-0
             if (_prevBeatPhase > 0.7f && BeatPhase < 0.3f)
                 OnBeat?.Invoke();
 
-            // Beat window entry: leading edge only
             if (!_prevOnBeat && nowOnBeat && BeatPhase < _beatWindowSize)
                 OnBeatWindow?.Invoke();
 
             _prevOnBeat = nowOnBeat;
         }
-
-        // ── Private helpers ───────────────────────────────────────────────────
 
         private void ApplyBPM(float bpm)
         {
@@ -130,7 +115,6 @@ namespace CyberPulse.Systems
         {
             if (_musicSource != null && _musicSource.isPlaying)
                 return (float)_musicSource.timeSamples / AudioSettings.outputSampleRate;
-            // Fallback to unscaled real time when no audio source is assigned yet.
             return Time.unscaledTime;
         }
     }

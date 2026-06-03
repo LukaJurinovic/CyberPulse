@@ -13,12 +13,12 @@ namespace CyberPulse.Systems
     /// </summary>
     public class WorldBeatShake : MonoBehaviour
     {
-        [SerializeField] private float _baseAmplitude = 0.18f;   // metres of XZ jitter per beat
-        [SerializeField] private float _verticalBias  = 0.4f;    // less vertical than horizontal
-        [SerializeField] private float _scaleBoost    = 0.18f;   // brief scale-up on heavy beats — clearly visible breathing
+        [SerializeField] private float _baseAmplitude = 0.18f;
+        [SerializeField] private float _verticalBias  = 0.4f;
+        [SerializeField] private float _scaleBoost    = 0.18f;
         [SerializeField] private float _decaySpeed    = 5f;
-        [SerializeField] private float _bassGain      = 8f;      // BassAmplitude → 0-1 mapping
-        [SerializeField] private float _elevatedSkipY = 2.5f;    // Skip blocks above this height (Tower/Platform tops must be stable landings)
+        [SerializeField] private float _bassGain      = 8f;
+        [SerializeField] private float _elevatedSkipY = 2.5f;
 
         private struct Item
         {
@@ -43,7 +43,6 @@ namespace CyberPulse.Systems
 
         private void Start()
         {
-            // BeatClock may not have existed during OnEnable (script execution order).
             if (!_subscribed && BeatClock.Instance != null)
             {
                 BeatClock.Instance.OnBeat += OnBeat;
@@ -116,15 +115,10 @@ namespace CyberPulse.Systems
             {
                 var c = parent.GetChild(i);
 
-                // JumpPad blocks have a Trigger child; moving them would re-fire
-                // the volume erratically. Leave them stationary.
                 if (c.name == "JumpPad") continue;
 
                 if (c.name == "Cover")
                 {
-                    // Elevated structures (Towers / raised Platforms) must stay still — the player
-                    // lands on their tops via JumpPads and a shaking surface would feel awful, plus
-                    // it would prevent NavMeshObstacle carving from settling.
                     if (c.position.y > _elevatedSkipY) continue;
                     if (ContainsTransform(c)) continue;
                     _items.Add(new Item
@@ -136,7 +130,6 @@ namespace CyberPulse.Systems
                     continue;
                 }
 
-                // Container nodes (e.g. "Cover_Procedural") — recurse through.
                 if (c.childCount > 0) CollectChildren(c);
             }
         }

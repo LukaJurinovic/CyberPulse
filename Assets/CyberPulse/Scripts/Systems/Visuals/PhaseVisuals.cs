@@ -21,8 +21,6 @@ namespace CyberPulse.Systems
         private Color _defaultAmbient;
         private float _targetVolumeWeight;
 
-        // ── Lifecycle ─────────────────────────────────────────────────────────
-
         private void Awake()
         {
             _defaultAmbient = RenderSettings.ambientLight;
@@ -46,8 +44,6 @@ namespace CyberPulse.Systems
             _extractVolume.weight = Mathf.Lerp(
                 _extractVolume.weight, _targetVolumeWeight, Time.deltaTime * _volumeLerpSpeed);
         }
-
-        // ── Phase reactions ───────────────────────────────────────────────────
 
         private void OnPhaseChanged(GamePhase phase)
         {

@@ -11,13 +11,11 @@ namespace CyberPulse.UI
         [SerializeField] private PlayerStats  _playerStats;
         [SerializeField] private WeaponHolder _weaponHolder;
 
-        // ── State ─────────────────────────────────────────────────────────────
         private Texture2D _pixel;
         private float     _damageFlash;
         private float     _scorePop;
         private int       _lastScore;
 
-        // ── Styles ────────────────────────────────────────────────────────────
         private GUIStyle _smLabel;
         private GUIStyle _mdLabel;
         private GUIStyle _traceLabel;
@@ -27,7 +25,6 @@ namespace CyberPulse.UI
         private GUIStyle _scoreLabel;
         private GUIStyle _extractLabel;
 
-        // ── Colors ────────────────────────────────────────────────────────────
         private static readonly Color CColour   = new Color(0f,    0.96f, 1f,   1f);
         private static readonly Color WColour   = new Color(1f,    0.85f, 0.1f, 1f);
         private static readonly Color DColour   = new Color(1f,    0.25f, 0.1f, 1f);
@@ -36,8 +33,6 @@ namespace CyberPulse.UI
         private static readonly Color TraceCrit = new Color(1f,    0.3f,  0.1f, 1f);
         private static readonly Color SyncColor = new Color(1f,    0.2f,  0.8f, 1f);
         private static readonly Color BarBG     = new Color(0.08f, 0.10f, 0.15f, 0.85f);
-
-        // ── Lifecycle ─────────────────────────────────────────────────────────
 
         private void Awake()
         {
@@ -70,8 +65,6 @@ namespace CyberPulse.UI
             if (_scorePop > 0f)
                 _scorePop = Mathf.Max(0f, _scorePop - Time.deltaTime * 4f);
         }
-
-        // ── OnGUI ─────────────────────────────────────────────────────────────
 
         private void OnGUI()
         {
@@ -119,7 +112,6 @@ namespace CyberPulse.UI
 
         private void DrawTopCenter(float sw)
         {
-            // Layered mode: show the active layer's objective progress.
             var lm = LayerManager.Instance;
             if (lm != null && lm.ActiveLayer != null)
             {
@@ -130,7 +122,7 @@ namespace CyberPulse.UI
                     $"LAYER  {lm.ActiveIndex + 1} / {lm.LayerCount}", _mdLabel);
 
                 Color nodeColour = layer.NodesTotal > 0 && layer.NodesSiphoned >= layer.NodesTotal
-                    ? new Color(0f, 1f, 0.4f, 1f)   // green once all siphoned
+                    ? new Color(0f, 1f, 0.4f, 1f)
                     : CColour;
                 _mdLabel.normal.textColor = nodeColour;
                 GUI.Label(new Rect(sw * 0.5f - 120f, 36f, 240f, 22f),
@@ -138,7 +130,6 @@ namespace CyberPulse.UI
                     _mdLabel);
                 _mdLabel.normal.textColor = CColour;
 
-                // Prompt to ascend once the layer is fully cleared and the door has opened.
                 if (layer.Cleared && !layer.IsTopLayer)
                 {
                     float pulse = 0.55f + 0.45f * Mathf.Sin(Time.unscaledTime * 4f);
@@ -150,7 +141,6 @@ namespace CyberPulse.UI
                 return;
             }
 
-            // Single-arena fallback.
             var mgr = DataNodeManager.Instance;
             if (mgr == null || mgr.TotalCount == 0) return;
             GUI.color = CColour;

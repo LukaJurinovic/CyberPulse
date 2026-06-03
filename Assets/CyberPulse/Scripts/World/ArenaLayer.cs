@@ -25,13 +25,13 @@ namespace CyberPulse.World
         [SerializeField] private int   _index;
         [SerializeField] private float _floorY;
         [SerializeField] private float _arenaHalf       = 24f;
-        [SerializeField] private float _spawnClearance  = 7f;  // keep wave spawns away from the player entry point
+        [SerializeField] private float _spawnClearance  = 7f;
         [SerializeField] private int   _initialVisibleNodes = 1;
 
         [SerializeField] private ProceduralArenaGenerator _generator;
         [SerializeField] private NavMeshSurface            _navSurface;
-        [SerializeField] private LockedDoor                _exitDoor;   // door up to the NEXT layer; null on the top layer
-        [SerializeField] private LayerMask                 _obstacleMask;  // arena geometry — nodes embedded in procedural blocks get nudged clear
+        [SerializeField] private LockedDoor                _exitDoor;
+        [SerializeField] private LayerMask                 _obstacleMask;
 
         private static readonly Vector2 EntryXZ = new Vector2(0f, -22f);
 
@@ -62,8 +62,6 @@ namespace CyberPulse.World
         /// <summary>Fires once when this layer becomes fully cleared.</summary>
         public event Action<ArenaLayer> OnCleared;
 
-        // ── Lifecycle ─────────────────────────────────────────────────────────
-
         private void OnEnable()
         {
             if (_generator != null) _generator.OnArenaGenerated += BakeNavMesh;
@@ -78,8 +76,6 @@ namespace CyberPulse.World
         {
             _started = true;
 
-            // Collect nodes parented under this layer (Awake on each node has already
-            // applied its hidden state, so IsHidden is reliable here).
             GetComponentsInChildren(true, _nodes);
 
             int visible = 0;
@@ -88,7 +84,6 @@ namespace CyberPulse.World
                 if (node == null) continue;
                 node.OnSiphoned += HandleNodeSiphoned;
 
-                // Force the first few visible; queue the rest for progressive reveal.
                 if (visible < _initialVisibleNodes)
                 {
                     node.Reveal();
@@ -101,16 +96,11 @@ namespace CyberPulse.World
                 }
             }
 
-            // Arena may already have generated before we subscribed (script order).
             if (!_navBaked && _generator != null && _generator.HasGenerated)
                 BakeNavMesh();
 
-            // Covers the case where the arena generated (and baked) before Start ran, so the
-            // node list wasn't ready yet for the de-overlap pass inside BakeNavMesh.
             ResolveNodeOverlaps();
         }
-
-        // ── Wave / enemy integration (called by WaveDirector) ──────────────────
 
         /// <summary>A random walkable-ish spawn point inside this layer, away from the entry.</summary>
         public Vector3 RandomSpawnPoint()
@@ -152,12 +142,9 @@ namespace CyberPulse.World
         {
             if (_allWavesSpawned) return;
             _allWavesSpawned = true;
-            // Reveal any nodes still hidden so the layer is always completable.
             while (_hiddenQueue.Count > 0) RevealNextNode();
             CheckCleared();
         }
-
-        // ── Event handlers ──────────────────────────────────────────────────────
 
         private void HandleNodeSiphoned()
         {
@@ -182,8 +169,6 @@ namespace CyberPulse.World
             OnCleared?.Invoke(this);
         }
 
-        // ── NavMesh ───────────────────────────────────────────────────────────
-
         private void BakeNavMesh()
         {
             if (!_navBaked && _navSurface != null)
@@ -192,8 +177,6 @@ namespace CyberPulse.World
                 _navSurface.BuildNavMesh();
             }
 
-            // The arena's procedural blocks now exist, so push any node that ended up embedded
-            // in one out to a clear spot (nodes are placed at build time, blocks at runtime).
             ResolveNodeOverlaps();
         }
 
@@ -204,7 +187,7 @@ namespace CyberPulse.World
         private void ResolveNodeOverlaps()
         {
             if (_nodesResolved) return;
-            if (_generator == null || !_generator.HasGenerated) return;  // blocks must exist first
+            if (_generator == null || !_generator.HasGenerated) return;
             if (_nodes.Count == 0) return;
             _nodesResolved = true;
 
@@ -227,7 +210,6 @@ namespace CyberPulse.World
 
                 if (!placed)
                 {
-                    // Last resort — lift the node up out of whatever it is buried in.
                     var p = t.position;
                     for (int i = 0; i < 14 && IsBlocked(p); i++) p.y += 0.5f;
                     t.position = p;

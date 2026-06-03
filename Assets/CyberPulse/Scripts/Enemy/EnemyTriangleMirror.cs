@@ -16,7 +16,7 @@ namespace CyberPulse.Enemy
     public class EnemyTriangleMirror : MonoBehaviour
     {
         [Header("Movement")]
-        [SerializeField] private float _moveSpeed        = 3.25f;  // 65% of player ~5 m/s
+        [SerializeField] private float _moveSpeed        = 3.25f;
         [SerializeField] private float _dashSpeed        = 14f;
         [SerializeField] private float _dashDuration     = 0.18f;
         [SerializeField] private int   _dashCharges      = 3;
@@ -41,7 +41,7 @@ namespace CyberPulse.Enemy
         private float _fireTimer;
         private bool  _isDashing;
         private bool  _isDead;
-        private float _baseY;   // spawn-floor height — keeps movement on this enemy's own layer
+        private float _baseY;
 
         private void Awake()
         {
@@ -126,7 +126,6 @@ namespace CyberPulse.Enemy
 
             float dist = Vector3.Distance(transform.position, _target.position);
 
-            // Dash aggressively toward player while charges remain
             if (_currentDashes > 0 && dist < _engageRange && dist > _preferredRange * 0.5f)
             {
                 _currentDashes--;
@@ -135,7 +134,6 @@ namespace CyberPulse.Enemy
                 return;
             }
 
-            // Normal: close to preferred range, then strafe
             Vector3 toTarget = (_target.position - transform.position).normalized;
             Vector3 move = dist > _preferredRange
                 ? toTarget
@@ -174,11 +172,9 @@ namespace CyberPulse.Enemy
             var go = new GameObject("TriangleProjectile");
             go.transform.position = transform.position + Vector3.up * 1.2f;
 
-            // Aim at player torso
             Vector3 dir = (_target.position + Vector3.up - go.transform.position).normalized;
             go.transform.rotation = Quaternion.LookRotation(dir);
 
-            // Visual — small orange sphere child
             var vis = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             vis.transform.SetParent(go.transform, false);
             vis.transform.localScale = Vector3.one * 0.15f;
@@ -189,14 +185,12 @@ namespace CyberPulse.Enemy
             mat.EnableKeyword("_EMISSION");
             vis.GetComponent<MeshRenderer>().sharedMaterial = mat;
 
-            // Hit collider on root
             var col = go.AddComponent<SphereCollider>();
             col.radius = 0.12f;
 
             var proj = go.AddComponent<Projectile>();
             proj.Init(_projectileSpeed, _projectileDamage, _playerLayer);
 
-            // Prevent projectile from immediately hitting this enemy
             var myCol = GetComponent<Collider>();
             if (myCol != null) Physics.IgnoreCollision(col, myCol);
         }

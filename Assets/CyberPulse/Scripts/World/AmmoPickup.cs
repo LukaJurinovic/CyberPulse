@@ -12,8 +12,8 @@ namespace CyberPulse.World
     public class AmmoPickup : MonoBehaviour
     {
         [SerializeField] private int   _ammoAmount = 12;
-        [SerializeField] private float _lifetime   = 12f;   // despawn if never collected
-        [SerializeField] private float _spinSpeed  = 120f;  // degrees/sec
+        [SerializeField] private float _lifetime   = 12f;
+        [SerializeField] private float _spinSpeed  = 120f;
         [SerializeField] private float _bobHeight  = 0.18f;
         [SerializeField] private float _bobSpeed   = 3f;
 
@@ -53,13 +53,12 @@ namespace CyberPulse.World
         {
             _visual = transform.childCount > 0 ? transform.GetChild(0) : null;
             _baseY  = transform.position.y;
-            _phase  = Random.value * Mathf.PI * 2f;   // desync simultaneous drops
+            _phase  = Random.value * Mathf.PI * 2f;
             if (_lifetime > 0f) Destroy(gameObject, _lifetime);
         }
 
         private void Update()
         {
-            // Spin the gem and bob it so it reads as a collectible against the floor.
             if (_visual != null)
                 _visual.Rotate(0f, _spinSpeed * Time.deltaTime, 0f, Space.World);
 
@@ -70,7 +69,6 @@ namespace CyberPulse.World
 
         private void OnTriggerEnter(Collider other)
         {
-            // The player's collider may sit on a child; search upward for the holder.
             var holder = other.GetComponentInParent<WeaponHolder>();
             if (holder == null) return;
 
@@ -87,8 +85,8 @@ namespace CyberPulse.World
 
             _sharedMat = new Material(shader) { name = "M_AmmoPickup" };
             _sharedMat.SetColor("_BaseColor",     new Color(0.1f, 1f, 0.6f));
-            _sharedMat.SetColor("_Color",         new Color(0.1f, 1f, 0.6f)); // Standard fallback
-            _sharedMat.SetColor("_EmissionColor", new Color(0.2f, 2.4f, 1.3f)); // HDR for Bloom
+            _sharedMat.SetColor("_Color",         new Color(0.1f, 1f, 0.6f));
+            _sharedMat.SetColor("_EmissionColor", new Color(0.2f, 2.4f, 1.3f));
             _sharedMat.EnableKeyword("_EMISSION");
             return _sharedMat;
         }

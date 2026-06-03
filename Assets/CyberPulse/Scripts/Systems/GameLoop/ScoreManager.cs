@@ -22,23 +22,21 @@ namespace CyberPulse.Systems
 
         [Header("Scoring")]
         [SerializeField] private int   _baseKillScore    = 100;
-        [SerializeField] private float _comboResetTime   = 5f;   // extended from 3s
+        [SerializeField] private float _comboResetTime   = 5f;
         [SerializeField] private int   _maxCombo         = 8;
         [SerializeField] private int   _scoreMilestone   = 500;
-        [SerializeField] private int   _specialScore     = 50;   // score per special activation
+        [SerializeField] private int   _specialScore     = 50;
 
         public int   Score         { get; private set; }
         public int   ComboCount    { get; private set; }
         public float ComboTimer    { get; private set; }
 
-        public event Action<int, int> OnScoreChanged;      // (newScore, pointsAdded)
-        public event Action<int>      OnComboChanged;      // (newCombo)
-        public event Action<int>      OnMilestoneReached;  // (milestoneNumber) — fires each time score crosses next milestone
+        public event Action<int, int> OnScoreChanged;
+        public event Action<int>      OnComboChanged;
+        public event Action<int>      OnMilestoneReached;
 
         private int _nextMilestone;
         private int _lastKillWeaponIndex = -1;
-
-        // ── Lifecycle ─────────────────────────────────────────────────────────
 
         private void Awake()
         {
@@ -67,8 +65,6 @@ namespace CyberPulse.Systems
             }
         }
 
-        // ── Public API ────────────────────────────────────────────────────────
-
         /// <summary>
         /// Called when the player shoots down a homing missile.
         /// Adds half-kill score scaled by combo and refreshes the combo window without incrementing count.
@@ -77,19 +73,17 @@ namespace CyberPulse.Systems
         {
             int points = (_baseKillScore / 2) * Mathf.Max(1, ComboCount);
             AddPoints(points);
-            if (ComboCount > 0) ComboTimer = _comboResetTime;   // keep streak alive
+            if (ComboCount > 0) ComboTimer = _comboResetTime;
         }
 
         /// <summary>Called by SyncGauge when a weapon special fires. Adds score and refreshes combo.</summary>
         public void AddSpecialScore()
         {
-            if (ComboCount == 0) return;  // special only scores while in a combo
+            if (ComboCount == 0) return;
             int points = _specialScore * ComboCount;
             AddPoints(points);
-            ComboTimer = _comboResetTime;  // refresh combo window
+            ComboTimer = _comboResetTime;
         }
-
-        // ── Kill scoring ──────────────────────────────────────────────────────
 
         private void OnEnemyKilled()
         {
@@ -104,8 +98,6 @@ namespace CyberPulse.Systems
             int points = _baseKillScore * ComboCount;
             AddPoints(points);
         }
-
-        // ── Internal helpers ──────────────────────────────────────────────────
 
         private void AddPoints(int points)
         {

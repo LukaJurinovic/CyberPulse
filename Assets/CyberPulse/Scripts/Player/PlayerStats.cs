@@ -13,10 +13,6 @@ namespace CyberPulse.Player
 
         private int _currentHealth;
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Events
-        // ──────────────────────────────────────────────────────────────────────
-
         /// <summary>Fires when damage is applied. Parameter is the damage amount (positive).</summary>
         public event Action<int> OnDamageTaken;
 
@@ -25,10 +21,6 @@ namespace CyberPulse.Player
 
         /// <summary>Fires once when <see cref="CurrentHealth"/> first reaches zero.</summary>
         public event Action OnDeath;
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Properties
-        // ──────────────────────────────────────────────────────────────────────
 
         /// <summary>Current health, always in the range [0, <see cref="MaxHealth"/>].</summary>
         public int CurrentHealth => _currentHealth;
@@ -39,18 +31,10 @@ namespace CyberPulse.Player
         /// <summary>True when <see cref="CurrentHealth"/> is zero.</summary>
         public bool IsDead => _currentHealth <= 0;
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Lifecycle
-        // ──────────────────────────────────────────────────────────────────────
-
         private void Awake()
         {
             _currentHealth = _maxHealth;
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Public API
-        // ──────────────────────────────────────────────────────────────────────
 
         /// <summary>
         /// Subtracts <paramref name="amount"/> from current health.

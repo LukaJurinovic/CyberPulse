@@ -19,7 +19,7 @@ namespace CyberPulse.Systems
         [Header("Count / Appearance")]
         [SerializeField] private int   _count     = 1000;
         [SerializeField] private float _cubeScale = 0.07f;
-        [SerializeField] private Color _color     = new Color(0f, 2.4f, 2.5f, 1f); // HDR cyan
+        [SerializeField] private Color _color     = new Color(0f, 2.4f, 2.5f, 1f);
 
         [Header("Orbit")]
         [SerializeField] private float _orbitSpeedMin = 0.3f;
@@ -30,16 +30,14 @@ namespace CyberPulse.Systems
         [Header("Player Repulsion")]
         [SerializeField] private float _repelRadius   = 6f;
         [SerializeField] private float _repelForce    = 10f;
-        [SerializeField] private float _repelReturn   = 4f;  // drift-back speed (units/sec)
+        [SerializeField] private float _repelReturn   = 4f;
 
         [Header("Distribution")]
         [Range(0f, 1f)]
-        [SerializeField] private float _elevatedFraction = 0.6f;  // share of bits clustered around elevated anchors
-        [SerializeField] private float _elevatedJitter   = 1.6f;  // XZ spread around each elevated anchor (metres)
-        [SerializeField] private float _elevatedHeight   = 1.4f;  // extra height above anchor
+        [SerializeField] private float _elevatedFraction = 0.6f;
+        [SerializeField] private float _elevatedJitter   = 1.6f;
+        [SerializeField] private float _elevatedHeight   = 1.4f;
 
-        // Default ground-level cluster centres — used when no elevated anchors exist
-        // (e.g. before ProceduralArenaGenerator has run).
         private static readonly Vector3[] GroundCentres =
         {
             new(-12f, 1.2f,  10f),
@@ -58,7 +56,6 @@ namespace CyberPulse.Systems
 
         private bool _layoutDirty = true;
 
-        // Pre-allocated instance data (no per-frame GC)
         private Matrix4x4[] _matrices;
         private Vector3[]   _basePos;
         private float[]     _phase;
@@ -69,12 +66,9 @@ namespace CyberPulse.Systems
         private Mesh     _mesh;
         private Material _material;
 
-        // DrawMeshInstanced limit is 1023 per call — split into batches
         private const int BatchSize = 1023;
         private Matrix4x4[][] _batches;
         private int           _batchCount;
-
-        // ── Lifecycle ─────────────────────────────────────────────────────────
 
         private void Awake()
         {
@@ -86,7 +80,6 @@ namespace CyberPulse.Systems
 
         private void OnEnable()
         {
-            // Re-layout once the arena generator publishes elevated anchors.
             if (ProceduralArenaGenerator.Instance != null)
                 ProceduralArenaGenerator.Instance.OnArenaGenerated += OnArenaGenerated;
         }
@@ -101,8 +94,6 @@ namespace CyberPulse.Systems
 
         private void Update()
         {
-            // If the arena generator has finished after our Awake, restamp
-            // base positions to cluster bits around elevated anchors.
             if (_layoutDirty)
             {
                 RebuildBasePositions();
@@ -124,7 +115,6 @@ namespace CyberPulse.Systems
 
                 Vector3 worldPos = _basePos[i] + orbit;
 
-                // Repulsion
                 float dist = Vector3.Distance(worldPos, playerPos);
                 if (dist < _repelRadius && dist > 0.01f)
                 {
@@ -140,7 +130,6 @@ namespace CyberPulse.Systems
                 _matrices[i] = Matrix4x4.TRS(worldPos + _repelOffset[i], Quaternion.identity, scale);
             }
 
-            // Copy into batches and draw
             for (int b = 0; b < _batchCount; b++)
             {
                 int start = b * BatchSize;
@@ -150,15 +139,11 @@ namespace CyberPulse.Systems
             }
         }
 
-        // ── Setup helpers ─────────────────────────────────────────────────────
-
         private void BuildMesh()
         {
-            // Borrow the shared cube mesh — no temp GameObject needed
             _mesh = Resources.GetBuiltinResource<Mesh>("Cube.fbx");
             if (_mesh == null)
             {
-                // Fallback: create a tiny mesh from a temporary primitive
                 var tmp = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 _mesh = tmp.GetComponent<MeshFilter>().sharedMesh;
                 Destroy(tmp);

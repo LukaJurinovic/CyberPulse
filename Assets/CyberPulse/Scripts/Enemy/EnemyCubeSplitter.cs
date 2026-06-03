@@ -22,7 +22,7 @@ namespace CyberPulse.Enemy
         [SerializeField] private LayerMask _playerLayer;
 
         [Header("Split")]
-        [SerializeField] private bool _isSplit = false;   // true on small cubes
+        [SerializeField] private bool _isSplit = false;
 
         private EnemyHealth      _health;
         private EnemySensor      _sensor;
@@ -32,21 +32,17 @@ namespace CyberPulse.Enemy
         private float _meleeTimer;
         private bool  _isDead;
         private bool  _inMelee;
-        private float _baseY;   // spawn-floor height — keeps the seek on this enemy's own layer
-
-        // ── Public init (used when spawning small cubes at runtime) ──────────
+        private float _baseY;
 
         /// <summary>Configure this instance as a split-spawn before SetActive(true).</summary>
         public void InitAsSplit(Transform playerTarget, LayerMask playerLayer)
         {
             _isSplit     = true;
-            _moveSpeed   = 5f;      // small cubes are faster
+            _moveSpeed   = 5f;
             _meleeDamage = 8;
             _target      = playerTarget;
             _playerLayer = playerLayer;
         }
-
-        // ── Lifecycle ─────────────────────────────────────────────────────────
 
         private void Awake()
         {
@@ -74,7 +70,6 @@ namespace CyberPulse.Enemy
             _visual?.SetMode(EnemyVisualMode.Chase);
         }
 
-        // Split cubes keep their injected target even when sensor loses sight.
         private void OnPlayerLost()
         {
             if (_isSplit) return;
@@ -117,8 +112,6 @@ namespace CyberPulse.Enemy
             }
         }
 
-        // ── Death → spawn splits ──────────────────────────────────────────────
-
         private void HandleDeath()
         {
             _isDead = true;
@@ -132,15 +125,14 @@ namespace CyberPulse.Enemy
         {
             for (int i = 0; i < SplitOffsets.Length; i++)
             {
-                Vector3 offset = SplitOffsets[i] * 1.1f;  // spread 4 splits clear of the dying parent's footprint
+                Vector3 offset = SplitOffsets[i] * 1.1f;
 
                 var go = new GameObject("CubeSplitter_Small");
-                go.SetActive(false);  // defer Awake until fully configured
-                go.layer = gameObject.layer;  // inherit the Enemy layer so weapons/sensors treat splits identically
+                go.SetActive(false);
+                go.layer = gameObject.layer;
 
                 go.transform.position = transform.position + Vector3.up * 0.3f + offset;
 
-                // Visual cube (half scale of parent)
                 var vis = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 vis.transform.SetParent(go.transform, false);
                 vis.transform.localScale = Vector3.one * 0.5f;
@@ -155,19 +147,17 @@ namespace CyberPulse.Enemy
                 var col = go.AddComponent<BoxCollider>();
                 col.size = Vector3.one * 0.5f;
 
-                // Minimal HitVFX
                 var vfxGO = new GameObject("HitVFX");
                 vfxGO.transform.SetParent(go.transform, false);
                 var ps = vfxGO.AddComponent<ParticleSystem>();
                 ConfigureSmallHitVFX(ps);
 
-                // Components — Awake is deferred (GO inactive)
                 var health   = go.AddComponent<EnemyHealth>();
                 var shards   = go.AddComponent<EnemyDeathShards>();
-                go.AddComponent<EnemySensor>();   // sensor is a no-op for splits; target injected below
+                go.AddComponent<EnemySensor>();
                 var splitter = go.AddComponent<EnemyCubeSplitter>();
 
-                health.InitHealth(1);   // splits die in a single hit from any weapon
+                health.InitHealth(1);
                 shards.SetRenderer(vis.GetComponent<Renderer>());
                 splitter.InitAsSplit(_target, _playerLayer);
 

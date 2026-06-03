@@ -25,7 +25,6 @@ namespace CyberPulse.UI
         private GUIStyle _scoreStyle;
         private GUIStyle _comboStyle;
 
-        // Score pop effect
         private float _scorePop;
         private int   _lastScore;
 
@@ -36,8 +35,6 @@ namespace CyberPulse.UI
         private static readonly Color ColCyan    = new Color(0f,    0.96f, 1f);
         private static readonly Color ColGold    = new Color(1f,    0.82f, 0.1f);
         private static readonly Color ColBg      = new Color(0.05f, 0.05f, 0.08f, 0.75f);
-
-        // ── Lifecycle ─────────────────────────────────────────────────────────
 
         private void Awake()
         {
@@ -63,7 +60,6 @@ namespace CyberPulse.UI
             if (_damageFlashAlpha > 0f)
                 _damageFlashAlpha = Mathf.Max(0f, _damageFlashAlpha - Time.deltaTime * 5f);
 
-            // Score pop: flash when score changes
             var sm = ScoreManager.Instance;
             if (sm != null && sm.Score != _lastScore)
             {
@@ -78,8 +74,6 @@ namespace CyberPulse.UI
         {
             _damageFlashAlpha = Mathf.Min(1f, _damageFlashAlpha + 0.45f);
         }
-
-        // ── Rendering ─────────────────────────────────────────────────────────
 
         private void OnGUI()
         {
@@ -190,7 +184,6 @@ namespace CyberPulse.UI
 
             EnsureStyles();
 
-            // Score — top-right corner, pops when it changes
             float popScale = 1f + _scorePop * 0.4f;
             float w = 200f * popScale;
             float h = 28f  * popScale;
@@ -199,7 +192,6 @@ namespace CyberPulse.UI
             GUI.Label(new Rect(sw - w - 16f, 14f, w, h), $"{sm.Score:N0}", _scoreStyle);
             GUI.color = Color.white;
 
-            // Combo — below score, only visible when combo > 1
             if (sm.ComboCount > 1)
             {
                 float comboAlpha = Mathf.Min(1f, sm.ComboTimer / 1f);
@@ -214,32 +206,24 @@ namespace CyberPulse.UI
             var gm = GameManager.Instance;
             if (gm == null || gm.CurrentPhase != GamePhase.Extract) return;
 
-            // Pulse between full and half alpha using unscaled time.
             float pulse = 0.55f + 0.45f * Mathf.Sin(Time.unscaledTime * 4f);
             GUI.color = new Color(0f, 1f, 0.35f, pulse);
             GUI.Label(new Rect(sw * 0.5f - 150f, sh * 0.5f - 60f, 300f, 40f), "▶  REACH THE EXIT  ◀", _extractStyle);
             GUI.color = Color.white;
         }
 
-        // ── Bar helper ────────────────────────────────────────────────────────
-
         private void DrawBar(float x, float y, float w, float h, float fill, Color fillColor, string label)
         {
-            // Background
             GUI.color = ColBg;
             GUI.DrawTexture(new Rect(x, y, w, h), _pixel);
 
-            // Fill
             GUI.color = fillColor;
             float fillW = Mathf.Max(0f, (w - 2f) * fill);
             GUI.DrawTexture(new Rect(x + 1, y + 1, fillW, h - 2f), _pixel);
 
-            // Label
             GUI.color = Color.white;
             GUI.Label(new Rect(x + 5, y + 1, w - 5, h), label, _barLabelStyle);
         }
-
-        // ── Style init (done in OnGUI to avoid pre-init issues) ───────────────
 
         private void EnsureStyles()
         {

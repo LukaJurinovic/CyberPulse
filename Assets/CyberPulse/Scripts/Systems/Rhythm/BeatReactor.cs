@@ -28,9 +28,9 @@ namespace CyberPulse.Systems
         [SerializeField] private WeaponHolder      _weaponHolder;
 
         [Header("Off-Rhythm Penalty")]
-        [SerializeField] private float _offRhythmDelay      = 2f;   // seconds before penalty kicks in
-        [SerializeField] private float _offRhythmMoveScale  = 0.7f; // fraction of normal move speed
-        [SerializeField] private float _offRhythmFireScale  = 0.6f; // fraction of normal fire rate
+        [SerializeField] private float _offRhythmDelay      = 2f;
+        [SerializeField] private float _offRhythmMoveScale  = 0.7f;
+        [SerializeField] private float _offRhythmFireScale  = 0.6f;
 
         [Header("SYNC Values")]
         [SerializeField] private float _syncPerBeatShot  = 8f;
@@ -41,8 +41,6 @@ namespace CyberPulse.Systems
         [Header("Ammo Reward")]
         [Tooltip("Reserve ammo refunded to the active weapon for a kill landed on the beat.")]
         [SerializeField] private int _ammoPerBeatKill = 6;
-
-        // ── Public state ──────────────────────────────────────────────────────
 
         public bool  IsOffRhythm    { get; private set; }
 
@@ -55,11 +53,7 @@ namespace CyberPulse.Systems
         /// <summary>Fires whenever a weapon shot lands within the beat window. TraceMeter uses this to pause fill.</summary>
         public event Action OnBeatShot;
 
-        // ── Private ───────────────────────────────────────────────────────────
-
         private float _timeSinceLastOnBeatAction;
-
-        // ── Lifecycle ─────────────────────────────────────────────────────────
 
         private void Awake()
         {
@@ -69,10 +63,8 @@ namespace CyberPulse.Systems
 
         private void Start()
         {
-            // Static weapon fire event — fires on any shot regardless of weapon type.
             WeaponBase.OnAnyWeaponFired += HandleWeaponFired;
 
-            // Enemy kill event — fires on any enemy death.
             EnemyHealth.OnAnyEnemyKilled += HandleEnemyKilled;
 
             if (_dash != null)
@@ -115,8 +107,6 @@ namespace CyberPulse.Systems
             }
         }
 
-        // ── Event handlers ────────────────────────────────────────────────────
-
         private void HandleWeaponFired()
         {
             if (BeatClock.Instance != null && BeatClock.Instance.IsOnBeat)
@@ -133,7 +123,6 @@ namespace CyberPulse.Systems
             {
                 RecordOnBeatAction();
                 SyncGauge.Instance?.Add(_syncPerBeatKill);
-                // Reward rhythmic play with ammo so staying on-beat keeps you topped up.
                 _weaponHolder?.ActiveWeapon?.AddReserveAmmo(_ammoPerBeatKill);
                 OnBeatKill?.Invoke();
             }
@@ -158,8 +147,6 @@ namespace CyberPulse.Systems
         {
             _timeSinceLastOnBeatAction = 0f;
 
-            // Ensure movement is restored immediately on any on-beat action,
-            // even if the off-rhythm timer hasn't fully expired yet.
             IsOffRhythm = false;
             if (_controller != null)
                 _controller.RhythmMultiplier = 1f;

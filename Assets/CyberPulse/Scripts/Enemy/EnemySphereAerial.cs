@@ -50,13 +50,10 @@ namespace CyberPulse.Enemy
             _health      = GetComponent<EnemyHealth>();
             _sensor      = GetComponent<EnemySensor>();
             _visual      = GetComponent<EnemyStateVisual>();
-            // Spawned ~6m above its layer floor (WaveDirector FlightHeight / aerial height); hover
-            // relative to that floor so the sphere stays on its own stacked layer, not at y=0.
             float floorY = transform.position.y - 6f;
             _hoverHeight = floorY + Random.Range(_hoverMin, _hoverMax);
             _driftTarget = PickDriftTarget();
 
-            // Procedural rising-pitch drone — no audio asset required.
             int sr = AudioSettings.outputSampleRate;
             _droneClip   = MakeDroneTone(220f, 0.5f, sr);
             _chargeAudio = gameObject.AddComponent<AudioSource>();
@@ -99,11 +96,9 @@ namespace CyberPulse.Enemy
 
         private void UpdateDrift()
         {
-            // Smooth hover height
             var pos = transform.position;
             float ty = Mathf.Lerp(pos.y, _hoverHeight, Time.deltaTime * 2f);
 
-            // Drift horizontally toward target
             var flatDest = new Vector3(_driftTarget.x, ty, _driftTarget.z);
             transform.position = Vector3.MoveTowards(
                 new Vector3(pos.x, ty, pos.z), flatDest, _driftSpeed * Time.deltaTime);
@@ -115,13 +110,11 @@ namespace CyberPulse.Enemy
 
             if (_target == null) return;
 
-            // Face player horizontally
             Vector3 dir = _target.position - transform.position; dir.y = 0;
             if (dir.sqrMagnitude > 0.01f)
                 transform.rotation = Quaternion.Slerp(transform.rotation,
                     Quaternion.LookRotation(dir), Time.deltaTime * 3f);
 
-            // Begin charge when player is within range
             float flatDist = new Vector2(
                 transform.position.x - _target.position.x,
                 transform.position.z - _target.position.z).magnitude;
@@ -147,14 +140,12 @@ namespace CyberPulse.Enemy
         {
             int hpAtStart = _health.CurrentHealth;
 
-            // Drop the strike onto the player's floor (their layer), not absolute y=0.
             Vector3 groundPos = _target != null
                 ? new Vector3(_target.position.x, _target.position.y - 1f, _target.position.z)
                 : new Vector3(transform.position.x, _hoverHeight - 6f, transform.position.z);
 
             var indicator = AoEIndicator.Create(groundPos, _attackRadius, _chargeDuration);
 
-            // Rising pitch tone — starts low, peaks at 2× on strike.
             _chargeAudio.pitch = 0.5f;
             _chargeAudio.Play();
 

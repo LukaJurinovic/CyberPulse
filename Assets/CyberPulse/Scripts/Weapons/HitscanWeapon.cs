@@ -24,7 +24,7 @@ namespace CyberPulse.Weapons
 
         [Header("Burst Special (costs SpecialCost SYNC)")]
         [SerializeField] private int   _burstCount    = 6;
-        [SerializeField] private float _burstFireRate = 30f;   // shots per second during burst
+        [SerializeField] private float _burstFireRate = 30f;
         private bool _burstActive;
 
         [Header("Bullet Trace")]

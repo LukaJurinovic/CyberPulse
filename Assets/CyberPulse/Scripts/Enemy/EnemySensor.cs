@@ -54,7 +54,6 @@ namespace CyberPulse.Enemy
                 return;
             }
 
-            // Walk up to the true root so EnemyController gets the Player GameObject, not a child.
             Transform root = target;
             while (root.parent != null) root = root.parent;
             SpotPlayer(root);

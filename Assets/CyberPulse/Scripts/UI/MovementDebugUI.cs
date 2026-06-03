@@ -16,7 +16,6 @@ namespace CyberPulse.UI
 
         private bool _visible = true;
 
-        // Cached styles — built once on first OnGUI call so GUISkin is available.
         private GUIStyle _boxStyle;
         private GUIStyle _labelStyle;
         private bool _stylesReady;
@@ -25,19 +24,11 @@ namespace CyberPulse.UI
         private const float PanelY = 10f;
         private const float Padding = 10f;
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Toggle
-        // ──────────────────────────────────────────────────────────────────────
-
         private void Update()
         {
             if (Keyboard.current != null && Keyboard.current[Key.F1].wasPressedThisFrame)
                 _visible = !_visible;
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Rendering
-        // ──────────────────────────────────────────────────────────────────────
 
         private void OnGUI()
         {
@@ -94,10 +85,6 @@ namespace CyberPulse.UI
             if (_controller.IsGrounded)    return "<color=#4ADE80>GROUNDED</color>";
             return "<color=#60A5FA>AIRBORNE</color>";
         }
-
-        // ──────────────────────────────────────────────────────────────────────
-        // Style initialisation (deferred until GUISkin is available)
-        // ──────────────────────────────────────────────────────────────────────
 
         private void EnsureStyles()
         {
