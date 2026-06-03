@@ -1,5 +1,7 @@
 using System.Collections;
+using System.IO;
 using UnityEngine;
+using UnityEngine.Networking;
 using CyberPulse.Systems;
 
 namespace CyberPulse.UI
@@ -62,7 +64,13 @@ namespace CyberPulse.UI
             Time.timeScale = 0f;
 
             // ── Resolve the chosen clip and load it onto the music sources ──────
-            AudioClip clip = ResolveSelectedClip();
+            // FilePath (user-imported) is checked first so it always wins over the bundled fallback.
+            AudioClip clip = null;
+            if (!string.IsNullOrEmpty(SongSelection.FilePath))
+                yield return LoadClipFromFile(SongSelection.FilePath, loaded => clip = loaded);
+            if (clip == null)
+                clip = ResolveSelectedClip();
+
             if (clip != null)
             {
                 _songName = clip.name;
@@ -134,6 +142,32 @@ namespace CyberPulse.UI
         {
             _profile     = profile;
             _haveProfile = true;
+        }
+
+        private static IEnumerator LoadClipFromFile(string path, System.Action<AudioClip> onDone)
+        {
+            string uri = "file:///" + path.Replace('\\', '/');
+            AudioType type = Path.GetExtension(path).ToLowerInvariant() switch
+            {
+                ".wav" => AudioType.WAV,
+                ".ogg" => AudioType.OGGVORBIS,
+                _      => AudioType.MPEG,
+            };
+
+            using var req = UnityWebRequestMultimedia.GetAudioClip(uri, type);
+            yield return req.SendWebRequest();
+
+            if (req.result == UnityWebRequest.Result.Success)
+            {
+                var clip = DownloadHandlerAudioClip.GetContent(req);
+                clip.name = Path.GetFileNameWithoutExtension(path);
+                onDone(clip);
+            }
+            else
+            {
+                Debug.LogWarning($"[LoadingController] Failed to load '{path}': {req.error}");
+                onDone(null);
+            }
         }
 
         private static IEnumerator WaitUnscaled(float seconds)

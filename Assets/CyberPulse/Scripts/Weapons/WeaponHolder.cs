@@ -74,6 +74,7 @@ namespace CyberPulse.Weapons
 
         private void OnDisable()
         {
+            _isFiring = false;
             _input.FirePressed        -= OnFirePressed;
             _input.FireReleased       -= OnFireReleased;
             _input.ReloadInput        -= OnReload;
@@ -119,7 +120,11 @@ namespace CyberPulse.Weapons
             ActiveWeapon?.TryFire(_cameraTransform);
         }
 
-        private void OnFireReleased() => _isFiring = false;
+        private void OnFireReleased()
+        {
+            _isFiring = false;
+            ActiveWeapon?.StopFireAudio();
+        }
 
         private void OnReload() => ActiveWeapon?.TryReload();
 

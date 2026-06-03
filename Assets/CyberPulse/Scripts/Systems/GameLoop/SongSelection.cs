@@ -12,6 +12,10 @@ namespace CyberPulse.Systems
     /// </summary>
     public static class SongSelection
     {
+        /// <summary>Name of a bundled AudioClip. Matched by name in LoadingController._songs.</summary>
         public static string SongName;
+
+        /// <summary>Absolute path to a user-imported audio file. Takes priority over SongName when set.</summary>
+        public static string FilePath;
     }
 }

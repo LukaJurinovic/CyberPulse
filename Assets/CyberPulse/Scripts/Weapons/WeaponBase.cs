@@ -42,6 +42,7 @@ namespace CyberPulse.Weapons
         private float _nextFireTime;
         private bool _isReloading;
         private Coroutine _reloadCoroutine;
+        private Coroutine _fadeCoroutine;
 
         /// <summary>Camera transform from the last TryFire call. Subclasses can read this in TriggerSpecial.</summary>
         protected Transform _lastCameraTransform;
@@ -91,8 +92,8 @@ namespace CyberPulse.Weapons
 
             if (_currentAmmo <= 0)
             {
+                StopFireAudio();
                 PlayAudio(_emptyClip, 0.5f);
-                // Auto-reload on empty
                 TryReload();
                 return false;
             }
@@ -103,7 +104,7 @@ namespace CyberPulse.Weapons
 
             FireProjectile(cameraTransform);
             PlayMuzzleFlash();
-            PlayAudio(_fireClip, 1f);
+            if (UseLoopedFireAudio()) StartLoopFireAudio(); else PlayAudio(_fireClip, 1f);
             OnAmmoChanged?.Invoke();
             OnAnyWeaponFired?.Invoke();
             return true;
@@ -155,6 +156,9 @@ namespace CyberPulse.Weapons
         /// <summary>Perform the actual shot — raycast or instantiate projectile.</summary>
         protected abstract void FireProjectile(Transform cameraTransform);
 
+        /// <summary>Return true to loop fire audio while the trigger is held instead of one-shot per shot.</summary>
+        protected virtual bool UseLoopedFireAudio() => false;
+
         /// <summary>
         /// Called by SyncGauge when the player spends SYNC on this weapon's special.
         /// Override in each weapon subclass. Base is a no-op so subclasses without a
@@ -172,7 +176,7 @@ namespace CyberPulse.Weapons
             _currentAmmo--;
             FireProjectile(cam);
             PlayMuzzleFlash();
-            PlayAudio(_fireClip, 1f);
+            if (UseLoopedFireAudio()) StartLoopFireAudio(); else PlayAudio(_fireClip, 1f);
             OnAmmoChanged?.Invoke();
             OnAnyWeaponFired?.Invoke();
         }
@@ -209,6 +213,45 @@ namespace CyberPulse.Weapons
             _isReloading     = false;
             _reloadCoroutine = null;
             OnAmmoChanged?.Invoke();
+        }
+
+        private void StartLoopFireAudio()
+        {
+            if (_audioSource == null || _fireClip == null) return;
+            // Cancel any in-progress fade so we don't fight it
+            if (_fadeCoroutine != null) { StopCoroutine(_fadeCoroutine); _fadeCoroutine = null; _audioSource.volume = 1f; }
+            if (_audioSource.isPlaying && _audioSource.clip == _fireClip) return;
+            _audioSource.volume = 1f;
+            _audioSource.clip = _fireClip;
+            _audioSource.loop = true;
+            _audioSource.Play();
+        }
+
+        public void StopFireAudio()
+        {
+            if (_audioSource == null || !UseLoopedFireAudio()) return;
+            if (!_audioSource.isPlaying || _audioSource.clip != _fireClip) return;
+            if (_fadeCoroutine != null) StopCoroutine(_fadeCoroutine);
+            _fadeCoroutine = StartCoroutine(FadeOutFireAudio(0.25f));
+        }
+
+        private IEnumerator FadeOutFireAudio(float duration)
+        {
+            float startVol = _audioSource.volume;
+            float elapsed = 0f;
+            while (elapsed < duration && _audioSource.clip == _fireClip)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                _audioSource.volume = Mathf.Lerp(startVol, 0f, elapsed / duration);
+                yield return null;
+            }
+            if (_audioSource.clip == _fireClip)
+            {
+                _audioSource.Stop();
+                _audioSource.loop = false;
+            }
+            _audioSource.volume = 1f;
+            _fadeCoroutine = null;
         }
 
         private void PlayMuzzleFlash()

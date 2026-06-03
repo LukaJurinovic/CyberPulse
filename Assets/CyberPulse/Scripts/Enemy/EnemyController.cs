@@ -36,6 +36,10 @@ namespace CyberPulse.Enemy
         private Transform _target;
         private int _patrolIndex;
         private float _waitTimer;
+        private float _spawnTime;
+
+        // Arena radius beyond which the enemy is considered escaped and destroyed.
+        private const float EscapeRadius = 38f;
 
         /// <summary>Current state of the enemy state machine.</summary>
         public State CurrentState => _state;
@@ -65,10 +69,26 @@ namespace CyberPulse.Enemy
             _health.OnDeath         -= HandleDeath;
         }
 
-        private void Start() => BeginPatrol();
+        private void Start()
+        {
+            _spawnTime = Time.time;
+            BeginPatrol();
+        }
 
         private void Update()
         {
+            // After a 1s grace period, kill enemies that have escaped the arena —
+            // either by falling off the NavMesh or by passing through a geometry gap.
+            if (_state != State.Dead && Time.time > _spawnTime + 1f)
+            {
+                Vector3 flat = new Vector3(transform.position.x, 0f, transform.position.z);
+                if (!_agent.isOnNavMesh || flat.magnitude > EscapeRadius)
+                {
+                    _health.TakeDamage(_health.MaxHealth);
+                    return;
+                }
+            }
+
             switch (_state)
             {
                 case State.Idle:   UpdateIdle();   break;

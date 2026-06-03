@@ -494,12 +494,21 @@ namespace CyberPulse.Editor
 
             var sway = rifleGO.AddComponent<WeaponSway>();
 
+            var sfxArFire   = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Sfx/ar_fire.mp3");
+            var sfxArReload = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Sfx/ar_reload.mp3");
+            if (sfxArFire   == null) Debug.LogWarning("[CyberPulse] Assets/Audio/Sfx/ar_fire.mp3 not found.");
+            if (sfxArReload == null) Debug.LogWarning("[CyberPulse] Assets/Audio/Sfx/ar_reload.mp3 not found.");
+
             LinkComponent(hitscan, so =>
             {
                 so.FindProperty("_weaponName").stringValue            = "Assault Rifle";
                 so.FindProperty("_specialCost").floatValue            = 60f;
                 so.FindProperty("_muzzleFlash").objectReferenceValue  = muzzlePs;
                 so.FindProperty("_audioSource").objectReferenceValue  = weaponAudio;
+                if (sfxArFire   != null)
+                    so.FindProperty("_fireClip").objectReferenceValue   = sfxArFire;
+                if (sfxArReload != null)
+                    so.FindProperty("_reloadClip").objectReferenceValue = sfxArReload;
             });
             LinkComponent(sway, so =>
             {
@@ -864,6 +873,7 @@ namespace CyberPulse.Editor
                 so.FindProperty("_analyzer").objectReferenceValue = analyzer);
 
             go.AddComponent<TimeManager>();
+            go.AddComponent<CyberPulse.UI.PauseMenu>();
 
             // Damage post-processing volume — chromatic aberration spike on hit
             var damageVol   = BuildDamageVolume();

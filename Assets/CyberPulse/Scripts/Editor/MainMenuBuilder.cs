@@ -118,22 +118,25 @@ namespace CyberPulse.Editor
             var songs = GatherSongs();
 
             // Music (quieter than gameplay) — preview the first track on the menu.
+            AudioSource menuSrc = null;
             if (songs.Length > 0)
             {
-                var src          = go.AddComponent<AudioSource>();
-                src.clip         = songs[0];
-                src.playOnAwake  = true;
-                src.loop         = true;
-                src.volume       = 0.55f;
-                src.spatialBlend = 0f;
+                menuSrc              = go.AddComponent<AudioSource>();
+                menuSrc.clip         = songs[0];
+                menuSrc.playOnAwake  = true;
+                menuSrc.loop         = true;
+                menuSrc.volume       = 0.55f;
+                menuSrc.spatialBlend = 0f;
             }
 
-            // Wire the selectable track list onto the controller.
+            // Wire the selectable track list and the menu music source onto the controller.
             var ctrlSO = new SerializedObject(ctrl);
             var songsProp = ctrlSO.FindProperty("_songs");
             songsProp.arraySize = songs.Length;
             for (int i = 0; i < songs.Length; i++)
                 songsProp.GetArrayElementAtIndex(i).objectReferenceValue = songs[i];
+            if (menuSrc != null)
+                ctrlSO.FindProperty("_menuMusicSource").objectReferenceValue = menuSrc;
             ctrlSO.ApplyModifiedProperties();
 
             return ctrl;

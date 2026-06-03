@@ -101,12 +101,23 @@ namespace CyberPulse.Systems
             // only the single-arena fallback uses the song-end + no-enemies check here.
             if (LayerManager.Instance == null && _musicSource != null)
             {
-                if (!_winFired && _songStarted && !_musicSource.isPlaying
+                if (!_winFired && _songStarted && !_musicSource.isPlaying && !AudioListener.pause
                     && _nextWaveIndex >= _waves.Length
                     && TraceMeter.Instance?.EnemyCount == 0)
                 {
                     _winFired = true;
                     GameManager.Instance?.TriggerWinState();
+                }
+            }
+
+            // Fail condition for layered mode: song ends before the player cleared all layers.
+            // LayerManager owns the win; if it hasn't fired by the time the track runs out, it's a loss.
+            if (LayerManager.Instance != null && _musicSource != null)
+            {
+                if (!_winFired && _songStarted && !_musicSource.isPlaying && !AudioListener.pause)
+                {
+                    _winFired = true;
+                    GameManager.Instance?.TriggerFailState();
                 }
             }
         }

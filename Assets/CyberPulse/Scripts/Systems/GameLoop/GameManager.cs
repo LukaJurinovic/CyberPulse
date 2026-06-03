@@ -26,6 +26,7 @@ namespace CyberPulse.Systems
         public event Action OnWin;
 
         private bool _gameOver;
+        public  bool IsGameOver => _gameOver;
 
         private void Awake()
         {

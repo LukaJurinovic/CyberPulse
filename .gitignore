@@ -38,6 +38,10 @@ context.md
 *.opendb
 *.VC.db
 
+# Music — large audio files; keep the folder itself via .gitkeep
+Assets/Audio/Music/*
+!Assets/Audio/Music/.gitkeep
+
 # OS
 .DS_Store
 Thumbs.db

@@ -1,5 +1,7 @@
 using System.Collections;
+using System.IO;
 using UnityEngine;
+using UnityEngine.Networking;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using CyberPulse.Systems;
@@ -14,21 +16,34 @@ namespace CyberPulse.UI
     {
         private const string GameScene = "PlayableTestLevel";
 
-        [SerializeField] private Image  _fadePanel;   // fullscreen black Image, alpha 0→1 on load
+        [SerializeField] private Image  _fadePanel;
         [SerializeField] private float  _fadeInTime  = 0.8f;
         [SerializeField] private float  _fadeOutTime = 0.5f;
 
         [Header("Title flicker")]
         [SerializeField] private TMPro.TextMeshProUGUI _titleText;
-        [SerializeField] private float _flickerInterval = 4f;   // seconds between glitch pops
+        [SerializeField] private float _flickerInterval = 4f;
 
         [Header("Song selection")]
-        [SerializeField] private AudioClip[] _songs;            // bundled tracks, wired by MainMenuBuilder
+        [SerializeField] private AudioClip[] _songs;          // bundled tracks wired by MainMenuBuilder
+        [SerializeField] private AudioSource _menuMusicSource; // wired by MainMenuBuilder (or found via GetComponent)
 
         private bool _busy;
 
-        private int      _selectedSong = 0;
-        private GUIStyle _songHeader, _songRow, _songRowSel;
+        // Bundled track selection (-1 when a user track is selected).
+        private int    _selectedBundled = 0;
+
+        // User-imported track selection (null when a bundled track is selected).
+        private string _selectedUserPath;
+
+        private string[]  _userTrackPaths = new string[0];
+        private Vector2   _scrollPos;
+        private Coroutine _trackLoadRoutine;
+
+        private GUIStyle _songHeader, _songSection, _songRow, _songRowSel, _importBtn;
+        private bool     _stylesBuilt;
+
+        private static readonly string[] AudioExtensions = { ".mp3", ".wav", ".ogg" };
 
         // ── Lifecycle ─────────────────────────────────────────────────────────
 
@@ -40,12 +55,22 @@ namespace CyberPulse.UI
             if (_titleText != null)
                 StartCoroutine(TitleFlicker());
 
-            // Default the selection to the first available track so launching the game
-            // without touching the list still picks a valid song.
+            // Fall back to finding the AudioSource on the same GO if not wired by the builder.
+            if (_menuMusicSource == null)
+                _menuMusicSource = GetComponent<AudioSource>();
+
+            ScanUserMusicFolder();
+
+            // Default to first bundled track.
             if (_songs != null && _songs.Length > 0)
             {
-                _selectedSong = Mathf.Clamp(_selectedSong, 0, _songs.Length - 1);
-                SongSelection.SongName = _songs[_selectedSong] != null ? _songs[_selectedSong].name : null;
+                _selectedBundled  = 0;
+                SongSelection.SongName = _songs[0] != null ? _songs[0].name : null;
+                SongSelection.FilePath = null;
+                // Ensure the menu music starts on this track (builder sets songs[0] by default,
+                // but this covers the case where playOnAwake was not set).
+                if (_menuMusicSource != null && _songs[0] != null && !_menuMusicSource.isPlaying)
+                    PlayMenuTrack(_songs[0]);
             }
         }
 
@@ -55,6 +80,7 @@ namespace CyberPulse.UI
         {
             if (_busy) return;
             _busy = true;
+            CommitSelection();
             StartCoroutine(LoadGame());
         }
 
@@ -69,50 +95,186 @@ namespace CyberPulse.UI
 
         private void OnGUI()
         {
-            if (_busy || _songs == null || _songs.Length == 0) return;
+            if (_busy) return;
             EnsureSongStyles();
 
             float sw = Screen.width, sh = Screen.height;
-            float panelW = Mathf.Min(440f, sw * 0.30f);
-            float x = sw * 0.06f;
-            float y = sh * 0.40f;
+            float panelW   = Mathf.Min(440f, sw * 0.30f);
+            float x        = sw * 0.06f;
+            float panelTop = sh * 0.38f;
 
-            GUI.Label(new Rect(x, y, panelW, 26f), "SELECT TRACK", _songHeader);
-            y += 36f;
+            // ── Header ────────────────────────────────────────────────────────
+            GUI.Label(new Rect(x, panelTop, panelW, 26f), "SELECT TRACK", _songHeader);
 
-            for (int i = 0; i < _songs.Length; i++)
+            // ── Scrollable list ───────────────────────────────────────────────
+            float listH    = sh * 0.38f;
+            var   listRect = new Rect(x, panelTop + 36f, panelW, listH);
+
+            // Calculate inner content height.
+            int totalRows  = BundledCount() + _userTrackPaths.Length;
+            // Extra rows: "BUNDLED" section header + (optionally) "IMPORTED" section header.
+            int sectionHeaders = 1 + (_userTrackPaths.Length > 0 ? 1 : 0);
+            float innerH   = Mathf.Max(listH, (totalRows + sectionHeaders) * 38f + 16f);
+
+            _scrollPos = GUI.BeginScrollView(listRect, _scrollPos, new Rect(0, 0, panelW - 16f, innerH));
+            float iy = 8f;
+
+            // ── Bundled tracks ────────────────────────────────────────────────
+            GUI.Label(new Rect(0, iy, panelW - 16f, 22f), "BUNDLED", _songSection);
+            iy += 28f;
+
+            if (_songs != null)
             {
-                if (_songs[i] == null) continue;
-                bool sel   = i == _selectedSong;
-                string row = (sel ? ">  " : "    ") + _songs[i].name;
-                if (GUI.Button(new Rect(x, y, panelW, 34f), row, sel ? _songRowSel : _songRow))
+                for (int i = 0; i < _songs.Length; i++)
                 {
-                    _selectedSong          = i;
-                    SongSelection.SongName = _songs[i].name;
+                    if (_songs[i] == null) continue;
+                    bool sel  = _selectedUserPath == null && _selectedBundled == i;
+                    string label = (sel ? ">  " : "    ") + _songs[i].name;
+                    if (GUI.Button(new Rect(0, iy, panelW - 16f, 34f), label, sel ? _songRowSel : _songRow))
+                    {
+                        _selectedBundled  = i;
+                        _selectedUserPath = null;
+                        PlayMenuTrack(_songs[i]);
+                    }
+                    iy += 38f;
                 }
-                y += 38f;
+            }
+
+            // ── User-imported tracks ───────────────────────────────────────────
+            if (_userTrackPaths.Length > 0)
+            {
+                iy += 8f;
+                GUI.Label(new Rect(0, iy, panelW - 16f, 22f), "IMPORTED", _songSection);
+                iy += 28f;
+
+                foreach (string path in _userTrackPaths)
+                {
+                    bool sel   = path == _selectedUserPath;
+                    string name = Path.GetFileNameWithoutExtension(path);
+                    string label = (sel ? ">  " : "    ") + name;
+                    if (GUI.Button(new Rect(0, iy, panelW - 16f, 34f), label, sel ? _songRowSel : _songRow))
+                    {
+                        _selectedUserPath = path;
+                        if (_trackLoadRoutine != null) StopCoroutine(_trackLoadRoutine);
+                        _trackLoadRoutine = StartCoroutine(LoadAndPlayUserTrack(path));
+                    }
+                    iy += 38f;
+                }
+            }
+
+            GUI.EndScrollView();
+
+            // ── Buttons below the list ─────────────────────────────────────────
+            float btnY = panelTop + 36f + listH + 8f;
+
+            if (GUI.Button(new Rect(x, btnY, panelW, 34f), "[ IMPORT TRACK ]", _importBtn))
+                ImportTrack();
+
+            if (GUI.Button(new Rect(x, btnY + 42f, panelW, 34f), "[ OPEN MUSIC FOLDER ]", _importBtn))
+                OpenMusicFolder();
+        }
+
+        // ── Track management ──────────────────────────────────────────────────
+
+        private void ScanUserMusicFolder()
+        {
+            string folder = UserMusicFolder();
+            if (!Directory.Exists(folder))
+            {
+                _userTrackPaths = new string[0];
+                return;
+            }
+
+            var found = new System.Collections.Generic.List<string>();
+            foreach (string ext in AudioExtensions)
+                found.AddRange(Directory.GetFiles(folder, "*" + ext));
+            found.Sort();
+            _userTrackPaths = found.ToArray();
+        }
+
+        private void ImportTrack()
+        {
+            string src = WindowsFilePicker.OpenAudioFile();
+            if (string.IsNullOrEmpty(src) || !File.Exists(src)) return;
+
+            string folder = UserMusicFolder();
+            if (!Directory.Exists(folder))
+                Directory.CreateDirectory(folder);
+
+            string dest = Path.Combine(folder, Path.GetFileName(src));
+            if (!File.Exists(dest))
+                File.Copy(src, dest);
+
+            ScanUserMusicFolder();
+
+            // Auto-select the newly imported track.
+            _selectedUserPath = dest;
+        }
+
+        private void OpenMusicFolder()
+        {
+            string folder = UserMusicFolder();
+            if (!Directory.Exists(folder))
+                Directory.CreateDirectory(folder);
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+            System.Diagnostics.Process.Start("explorer.exe", folder.Replace('/', '\\'));
+#endif
+        }
+
+        private void PlayMenuTrack(AudioClip clip)
+        {
+            if (_menuMusicSource == null || clip == null) return;
+            if (_menuMusicSource.clip == clip && _menuMusicSource.isPlaying) return;
+            _menuMusicSource.clip = clip;
+            _menuMusicSource.Play();
+        }
+
+        private IEnumerator LoadAndPlayUserTrack(string path)
+        {
+            string uri = "file:///" + path.Replace('\\', '/');
+            AudioType type = Path.GetExtension(path).ToLowerInvariant() switch
+            {
+                ".wav" => AudioType.WAV,
+                ".ogg" => AudioType.OGGVORBIS,
+                _      => AudioType.MPEG,
+            };
+
+            using var req = UnityWebRequestMultimedia.GetAudioClip(uri, type);
+            yield return req.SendWebRequest();
+
+            // Only play if the user hasn't switched away during the load.
+            if (req.result == UnityWebRequest.Result.Success && _selectedUserPath == path)
+                PlayMenuTrack(DownloadHandlerAudioClip.GetContent(req));
+            else if (req.result != UnityWebRequest.Result.Success)
+                Debug.LogWarning($"[MainMenu] Failed to load preview '{path}': {req.error}");
+
+            _trackLoadRoutine = null;
+        }
+
+        private void CommitSelection()
+        {
+            if (_selectedUserPath != null && File.Exists(_selectedUserPath))
+            {
+                SongSelection.FilePath = _selectedUserPath;
+                SongSelection.SongName = null;
+            }
+            else if (_songs != null && _selectedBundled >= 0 && _selectedBundled < _songs.Length
+                     && _songs[_selectedBundled] != null)
+            {
+                SongSelection.SongName = _songs[_selectedBundled].name;
+                SongSelection.FilePath = null;
             }
         }
 
-        private void EnsureSongStyles()
+        private static string UserMusicFolder() =>
+            Path.Combine(Application.persistentDataPath, "Music");
+
+        private int BundledCount()
         {
-            if (_songHeader != null) return;
-            _songHeader = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 18, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft,
-            };
-            _songHeader.normal.textColor = new Color(0f, 0.96f, 1f, 0.85f);
-
-            _songRow = new GUIStyle(GUI.skin.button)
-            {
-                fontSize = 16, alignment = TextAnchor.MiddleLeft,
-                padding = new RectOffset(10, 10, 6, 6),
-            };
-            _songRow.normal.textColor = new Color(0.5f, 0.6f, 0.7f, 1f);
-
-            _songRowSel = new GUIStyle(_songRow);
-            _songRowSel.normal.textColor = new Color(0f, 0.96f, 1f, 1f);
-            _songRowSel.fontStyle        = FontStyle.Bold;
+            if (_songs == null) return 0;
+            int n = 0;
+            foreach (var c in _songs) if (c != null) n++;
+            return n;
         }
 
         // ── Coroutines ────────────────────────────────────────────────────────
@@ -150,7 +312,6 @@ namespace CyberPulse.UI
             _fadePanel.color = color;
         }
 
-        // Brief random-character glitch on the title text every few seconds
         private IEnumerator TitleFlicker()
         {
             const string Chars    = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%";
@@ -159,7 +320,6 @@ namespace CyberPulse.UI
             {
                 yield return new WaitForSeconds(_flickerInterval + Random.Range(-1f, 1f));
 
-                // Two quick flicker frames
                 for (int f = 0; f < 3; f++)
                 {
                     var glitched = new System.Text.StringBuilder(Original);
@@ -171,6 +331,45 @@ namespace CyberPulse.UI
                     yield return new WaitForSecondsRealtime(0.05f);
                 }
             }
+        }
+
+        // ── Styles ────────────────────────────────────────────────────────────
+
+        private void EnsureSongStyles()
+        {
+            if (_stylesBuilt) return;
+
+            _songHeader = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 18, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft,
+            };
+            _songHeader.normal.textColor = new Color(0f, 0.96f, 1f, 0.85f);
+
+            _songSection = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 12, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft,
+            };
+            _songSection.normal.textColor = new Color(0.4f, 0.5f, 0.6f, 1f);
+
+            _songRow = new GUIStyle(GUI.skin.button)
+            {
+                fontSize = 14, alignment = TextAnchor.MiddleLeft,
+                padding = new RectOffset(10, 10, 6, 6),
+            };
+            _songRow.normal.textColor = new Color(0.5f, 0.6f, 0.7f, 1f);
+
+            _songRowSel = new GUIStyle(_songRow);
+            _songRowSel.normal.textColor = new Color(0f, 0.96f, 1f, 1f);
+            _songRowSel.fontStyle        = FontStyle.Bold;
+
+            _importBtn = new GUIStyle(GUI.skin.button)
+            {
+                fontSize = 13, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter,
+            };
+            _importBtn.normal.textColor = new Color(0.4f, 0.85f, 1f, 1f);
+            _importBtn.hover.textColor  = Color.white;
+
+            _stylesBuilt = true;
         }
     }
 }

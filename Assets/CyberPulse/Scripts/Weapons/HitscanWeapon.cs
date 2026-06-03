@@ -31,6 +31,8 @@ namespace CyberPulse.Weapons
         [SerializeField] private float _traceDuration = 0.06f;
         [SerializeField] private float _traceWidth = 0.02f;
 
+        protected override bool UseLoopedFireAudio() => true;
+
         protected override void FireProjectile(Transform cameraTransform)
         {
             bool onBeat = BeatClock.Instance != null && BeatClock.Instance.IsOnBeat;
@@ -82,6 +84,7 @@ namespace CyberPulse.Weapons
                 yield return new WaitForSeconds(interval);
             }
             _burstActive = false;
+            StopFireAudio();
         }
 
         private IEnumerator DrawTrace(Vector3 start, Vector3 end)
