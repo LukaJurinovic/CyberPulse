@@ -31,10 +31,18 @@ namespace CyberPulse.UI
             _activatedAt = Time.unscaledTime;
         }
 
+        // Laid out against this virtual height and scaled uniformly to the real
+        // resolution so the overlay matches the rest of the HUD across resolutions.
+        private const float ReferenceHeight = 720f;
+
         private void OnGUI()
         {
-            float sw = Screen.width;
-            float sh = Screen.height;
+            float     scale      = Screen.height / ReferenceHeight;
+            Matrix4x4 prevMatrix = GUI.matrix;
+            GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
+
+            float sw = Screen.width  / scale;
+            float sh = Screen.height / scale;
 
             float alpha = _activatedAt < 0f ? 1f
                 : Mathf.Clamp01((Time.unscaledTime - _activatedAt) / 0.4f);
@@ -52,7 +60,7 @@ namespace CyberPulse.UI
                 _headlineColor.r, _headlineColor.g, _headlineColor.b, pulse);
             GUI.Label(new Rect(sw * 0.5f - 240f, cy, 480f, 90f), _headline, _headStyle);
 
-            if (alpha < 0.6f) return;
+            if (alpha < 0.6f) { GUI.matrix = prevMatrix; return; }
 
             float sub = Mathf.Clamp01((alpha - 0.6f) / 0.4f);
 
@@ -67,6 +75,8 @@ namespace CyberPulse.UI
             _hintStyle.normal.textColor = new Color(0.55f, 0.65f, 0.75f, sub * 0.85f);
             GUI.Label(new Rect(sw * 0.5f - 120f, cy + 140f, 240f, 24f),
                 "Restarting...", _hintStyle);
+
+            GUI.matrix = prevMatrix;
         }
 
         private void EnsureStyles()

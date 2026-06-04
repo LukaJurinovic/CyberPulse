@@ -66,13 +66,22 @@ namespace CyberPulse.UI
                 _scorePop = Mathf.Max(0f, _scorePop - Time.deltaTime * 4f);
         }
 
+        // The HUD is laid out against this virtual height and scaled uniformly to the
+        // real resolution, so it stays the same apparent size on a high-res built player
+        // as it is in a smaller editor Game view (lower value = larger HUD).
+        private const float ReferenceHeight = 720f;
+
         private void OnGUI()
         {
             if (_pixel == null) return;
             EnsureStyles();
 
-            float sw = Screen.width;
-            float sh = Screen.height;
+            float     scale      = Screen.height / ReferenceHeight;
+            Matrix4x4 prevMatrix = GUI.matrix;
+            GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
+
+            float sw = Screen.width  / scale;
+            float sh = Screen.height / scale;
 
             DrawDamageFlash(sw, sh);
             DrawTopLeft();
@@ -80,6 +89,8 @@ namespace CyberPulse.UI
             DrawBottomLeft(sh);
             DrawBottomRight(sw, sh);
             DrawExtractPrompt(sw, sh);
+
+            GUI.matrix = prevMatrix;
         }
 
         private void DrawDamageFlash(float sw, float sh)

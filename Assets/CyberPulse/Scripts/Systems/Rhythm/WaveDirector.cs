@@ -46,6 +46,13 @@ namespace CyberPulse.Systems
         private bool _songStarted;
         private bool _winFired;
 
+        // Per-layer wave timing. Each layer's waves are re-based to the moment the
+        // player arrives on that layer (see HandleActiveLayerChanged), so upper-floor
+        // waves spawn relative to arrival rather than to absolute song time — the
+        // player can clear floors at their own pace and still face every wave.
+        private float _layerActivatedAt;
+        private float _layerBaseSpawnTime;
+
         private void Awake()
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -54,6 +61,9 @@ namespace CyberPulse.Systems
 
         private void Start()
         {
+            if (LayerManager.Instance != null)
+                LayerManager.Instance.OnActiveLayerChanged += HandleActiveLayerChanged;
+
             if (SongAnalyzer.Instance == null) return;
 
             if (SongAnalyzer.Instance.IsAnalyzed)
@@ -66,6 +76,8 @@ namespace CyberPulse.Systems
         {
             if (SongAnalyzer.Instance != null)
                 SongAnalyzer.Instance.OnAnalysisComplete -= ApplyProfile;
+            if (LayerManager.Instance != null)
+                LayerManager.Instance.OnActiveLayerChanged -= HandleActiveLayerChanged;
         }
 
         private void Update()
@@ -85,8 +97,8 @@ namespace CyberPulse.Systems
 
                 if (eligible)
                 {
-                    float t = SongTime();
-                    if (t >= _waves[_nextWaveIndex].SpawnTime - _earlyTriggerSeconds)
+                    float due = _waves[_nextWaveIndex].SpawnTime - _layerBaseSpawnTime + _layerActivatedAt;
+                    if (SongTime() >= due - _earlyTriggerSeconds)
                     {
                         SpawnWave(_waves[_nextWaveIndex]);
                         _nextWaveIndex++;
@@ -95,6 +107,11 @@ namespace CyberPulse.Systems
                 }
             }
 
+            // The song is the run clock. Single-arena mode wins when it ends with every
+            // wave sent and the arena clear; layered mode fails if it ends before the
+            // player has fought up through every floor (the win itself fires from
+            // LayerManager when the top floor clears). Per-layer wave re-basing still
+            // guarantees each floor is populated for as long as the song is playing.
             if (LayerManager.Instance == null && _musicSource != null)
             {
                 if (!_winFired && _songStarted && !_musicSource.isPlaying && !AudioListener.pause
@@ -161,6 +178,28 @@ namespace CyberPulse.Systems
         /// Once the next pending wave belongs to a higher layer (or none remain), the active
         /// layer has received every wave it ever will — tell it so it can become clearable.
         /// </summary>
+        /// <summary>
+        /// Re-bases the wave schedule when the player ascends to a new layer. The layer's
+        /// first pending wave becomes due immediately on arrival and the rest keep their
+        /// original relative spacing, so each floor is fought regardless of where the song
+        /// clock happens to be. The ground layer (index 0) keeps absolute song timing.
+        /// A layer with no waves of its own is marked complete at once so it can still clear.
+        /// </summary>
+        private void HandleActiveLayerChanged(int newIndex)
+        {
+            if (newIndex <= 0 || _waves == null || _waveLayer == null) return;
+
+            if (_nextWaveIndex < _waves.Length && _waveLayer[_nextWaveIndex] == newIndex)
+            {
+                _layerActivatedAt   = SongTime();
+                _layerBaseSpawnTime = _waves[_nextWaveIndex].SpawnTime;
+            }
+            else
+            {
+                LayerManager.Instance?.ActiveLayer?.MarkAllWavesSpawned();
+            }
+        }
+
         private void MarkLayerCompleteIfDone(int activeLayer)
         {
             var layer = LayerManager.Instance?.ActiveLayer;

@@ -61,6 +61,8 @@ namespace CyberPulse.UI
             AudioClip clip = null;
             if (!string.IsNullOrEmpty(SongSelection.FilePath))
                 yield return LoadClipFromFile(SongSelection.FilePath, loaded => clip = loaded);
+            if (clip == null && SongSelection.Clip != null)
+                clip = SongSelection.Clip;
             if (clip == null)
                 clip = ResolveSelectedClip();
 
@@ -115,8 +117,11 @@ namespace CyberPulse.UI
             if (_songs != null)
             {
                 if (!string.IsNullOrEmpty(want))
+                {
                     foreach (var c in _songs)
                         if (c != null && c.name == want) return c;
+                    Debug.LogWarning($"[LoadingController] Requested track '{want}' not found among bundled clips; falling back to first available.");
+                }
 
                 foreach (var c in _songs)
                     if (c != null) return c;

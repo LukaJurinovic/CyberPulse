@@ -24,7 +24,8 @@ namespace CyberPulse.Enemy
         [SerializeField, Range(0.03f, 0.6f)]
         private float _fillTint = 0.4f;
 
-        private const string WireframeShaderName = "CyberPulse/WireframeEnemy";
+        private const string WireframeShaderName    = "CyberPulse/WireframeEnemy";
+        private const string WireframeMaterialAsset  = "M_Enemy_Wireframe";
 
         private static readonly int EdgeColorID = Shader.PropertyToID("_EdgeColor");
         private static readonly int FillColorID = Shader.PropertyToID("_FillColor");
@@ -61,6 +62,14 @@ namespace CyberPulse.Enemy
 
         private static Material GetSharedWireframe()
         {
+            if (_sharedWireframe != null) return _sharedWireframe;
+
+            // Enemy prefabs ship with a null material, so the only thing that can keep the
+            // wireframe shader out of the build's stripping pass is a serialized material
+            // asset that references it. Loading that asset from Resources both supplies the
+            // material at runtime and pins the shader into the build (otherwise Shader.Find
+            // returns null in a player and every enemy renders magenta).
+            _sharedWireframe = Resources.Load<Material>(WireframeMaterialAsset);
             if (_sharedWireframe != null) return _sharedWireframe;
 
             var shader = Shader.Find(WireframeShaderName);

@@ -12,7 +12,7 @@ namespace CyberPulse.Enemy
     /// </summary>
     public class MissileLockOn : MonoBehaviour
     {
-        [SerializeField] private float _alertRadius  = 6f;
+        [SerializeField] private float _alertRadius  = 10f;
         [SerializeField] private float _beepInterval = 0.30f;
 
         private Transform   _playerTarget;

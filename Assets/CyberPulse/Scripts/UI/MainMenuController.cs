@@ -59,6 +59,7 @@ namespace CyberPulse.UI
             if (_songs != null && _songs.Length > 0)
             {
                 _selectedBundled  = 0;
+                SongSelection.Clip     = _songs[0];
                 SongSelection.SongName = _songs[0] != null ? _songs[0].name : null;
                 SongSelection.FilePath = null;
                 if (_menuMusicSource != null && _songs[0] != null && !_menuMusicSource.isPlaying)
@@ -233,11 +234,13 @@ namespace CyberPulse.UI
             if (_selectedUserPath != null && File.Exists(_selectedUserPath))
             {
                 SongSelection.FilePath = _selectedUserPath;
+                SongSelection.Clip     = null;
                 SongSelection.SongName = null;
             }
             else if (_songs != null && _selectedBundled >= 0 && _selectedBundled < _songs.Length
                      && _songs[_selectedBundled] != null)
             {
+                SongSelection.Clip     = _songs[_selectedBundled];
                 SongSelection.SongName = _songs[_selectedBundled].name;
                 SongSelection.FilePath = null;
             }

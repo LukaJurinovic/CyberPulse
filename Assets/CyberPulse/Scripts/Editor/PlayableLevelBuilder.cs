@@ -21,11 +21,11 @@ namespace CyberPulse.Editor
     /// Menu: CyberPulse ▶ Build Playable Level
     ///
     /// Creates Assets/Scenes/PlayableTestLevel.unity with:
-    ///   - 60×60 enclosed arena (floor, 4 walls, ceiling)
-    ///   - Jump platforms, wall-slide corridor, dash markers, cover blocks
-    ///   - 4 enemies with patrol AI wired and ready to chase/attack
-    ///   - Full player hierarchy (movement, dash, camera, weapon, debug UI)
-    ///   - NavMesh baked for enemy pathfinding
+    ///   - A 3-layer stacked arena connected by ramps and locked doors that gate vertical progression
+    ///   - Full player hierarchy (movement, dash, camera, weapon) plus crosshair and diegetic HUD
+    ///   - Win/Fail end screens and damage volumes
+    ///   - Five enemy prefabs (Seeker, Sphere, Triangle, Cylinder, Cube) wired for runtime wave spawning
+    ///   - NavMesh baked for ground-enemy pathfinding
     ///   - All serialized references wired — no Inspector work needed
     /// </summary>
     public static class PlayableLevelBuilder
@@ -40,8 +40,6 @@ namespace CyberPulse.Editor
         private static readonly Color DarkFloor  = new Color(0.04f, 0.04f,  0.08f, 1f);
         private static readonly Color WallColor  = new Color(0.06f, 0.07f,  0.12f, 1f);
         private static readonly Color PlatColor  = new Color(0.04f, 0.10f,  0.18f, 1f);
-        private static readonly Color CoverColor = new Color(0.08f, 0.06f,  0.15f, 1f);
-        private static readonly Color MarkerColor = new Color(0.12f, 0.05f, 0.18f, 1f);
         private static readonly Color EnemyColor = new Color(0.75f, 0.15f,  0.05f, 1f);
 
         private const int   LayerCount  = 3;
@@ -276,7 +274,9 @@ namespace CyberPulse.Editor
 
             var mat = new Material(UrpLit());
             mat.SetColor("_BaseColor",     PlatColor);
-            mat.SetColor("_EmissionColor", new Color(0f, 0.4f, 0.6f));
+            // Keep emission well below the bloom threshold so the ramp reads as its
+            // dark structural colour instead of a glowing neon strip in the build.
+            mat.SetColor("_EmissionColor", new Color(0f, 0.1f, 0.15f));
             mat.EnableKeyword("_EMISSION");
             ramp.GetComponent<MeshRenderer>().sharedMaterial = mat;
         }
@@ -554,122 +554,6 @@ namespace CyberPulse.Editor
             });
         }
 
-        private static void BuildEnemies(int groundMask, int playerMask, int groundLayerIdx)
-        {
-            var root = new GameObject("Enemies");
-
-            CreateEnemy("Enemy_NW", root, new Vector3(-20f, 0f, 20f), groundMask, playerMask,
-                new[]
-                {
-                    new Vector3(-22f, 0f, 22f), new Vector3(-10f, 0f, 22f),
-                    new Vector3(-10f, 0f, 10f), new Vector3(-22f, 0f, 10f),
-                });
-
-            CreateEnemy("Enemy_NE", root, new Vector3(8f, 0f, 20f), groundMask, playerMask,
-                new[]
-                {
-                    new Vector3(10f, 0f, 24f), new Vector3( 5f, 0f, 24f),
-                    new Vector3( 5f, 0f, 12f), new Vector3(10f, 0f, 12f),
-                });
-
-            CreateEnemy("Enemy_W", root, new Vector3(-20f, 0f, -5f), groundMask, playerMask,
-                new[]
-                {
-                    new Vector3(-22f, 0f, -3f), new Vector3(-12f, 0f, -3f),
-                    new Vector3(-12f, 0f, -15f), new Vector3(-22f, 0f, -15f),
-                });
-
-            CreateEnemy("Enemy_C", root, new Vector3(5f, 0f, 4f), groundMask, playerMask,
-                new[]
-                {
-                    new Vector3( 8f, 0f,  8f), new Vector3(-8f, 0f,  8f),
-                    new Vector3(-8f, 0f, -4f), new Vector3( 8f, 0f, -4f),
-                });
-        }
-
-        private static void CreateEnemy(string name, GameObject parent, Vector3 position,
-            int groundMask, int playerMask, Vector3[] patrolPositions)
-        {
-            var enemy = new GameObject(name);
-            enemy.transform.SetParent(parent.transform, false);
-            enemy.transform.position = position;
-
-            var col = enemy.AddComponent<CapsuleCollider>();
-            col.height = 2f;
-            col.radius = 0.4f;
-            col.center = new Vector3(0f, 1f, 0f);
-
-            var agent = enemy.AddComponent<UnityEngine.AI.NavMeshAgent>();
-            agent.height          = 2f;
-            agent.radius          = 0.4f;
-            agent.angularSpeed    = 360f;
-            agent.acceleration    = 12f;
-            agent.stoppingDistance = 0.5f;
-
-            var visual = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            visual.name = "Visual";
-            visual.transform.SetParent(enemy.transform, false);
-            visual.transform.localPosition = new Vector3(0f, 1f, 0f);
-            UnityEngine.Object.DestroyImmediate(visual.GetComponent<CapsuleCollider>());
-            visual.GetComponent<MeshRenderer>().sharedMaterial = MakeWireframeMaterial();
-
-            var hitFXGO = new GameObject("HitVFX");
-            hitFXGO.transform.SetParent(enemy.transform, false);
-            var hitPs = hitFXGO.AddComponent<ParticleSystem>();
-            ConfigureHitVFX(hitPs);
-
-            var patrolParent = new GameObject("PatrolPoints");
-            patrolParent.transform.SetParent(enemy.transform, false);
-            var patrolTransforms = new Transform[patrolPositions.Length];
-            for (int i = 0; i < patrolPositions.Length; i++)
-            {
-                var pt = new GameObject($"Point_{i}");
-                pt.transform.SetParent(patrolParent.transform, false);
-                pt.transform.position = patrolPositions[i];
-                patrolTransforms[i] = pt.transform;
-            }
-
-            var health     = enemy.AddComponent<EnemyHealth>();
-            var shards     = enemy.AddComponent<EnemyDeathShards>();
-            var sensor     = enemy.AddComponent<EnemySensor>();
-            var attack     = enemy.AddComponent<EnemyAttack>();
-            var controller = enemy.AddComponent<EnemyController>();
-
-            LinkComponent(health, so =>
-            {
-                so.FindProperty("_hitVFX").objectReferenceValue      = hitPs;
-                so.FindProperty("_deathShards").objectReferenceValue = shards;
-            });
-
-            LinkComponent(shards, so =>
-                so.FindProperty("_enemyRenderer").objectReferenceValue = visual.GetComponent<MeshRenderer>());
-
-            LinkComponent(sensor, so =>
-            {
-                so.FindProperty("_detectionRange").floatValue   = 20f;
-                so.FindProperty("_fieldOfView").floatValue      = 160f;
-                so.FindProperty("_checkInterval").floatValue    = 0.15f;
-                so.FindProperty("_playerLayer").intValue        = playerMask;
-                so.FindProperty("_obstructionLayer").intValue   = groundMask;
-            });
-
-            LinkComponent(attack, so =>
-            {
-                so.FindProperty("_damage").intValue             = 10;
-                so.FindProperty("_cooldown").floatValue         = 1.5f;
-                so.FindProperty("_range").floatValue            = 2.5f;
-                so.FindProperty("_playerLayer").intValue        = playerMask;
-            });
-
-            LinkComponent(controller, so =>
-            {
-                var pts = so.FindProperty("_patrolPoints");
-                pts.arraySize = patrolTransforms.Length;
-                for (int i = 0; i < patrolTransforms.Length; i++)
-                    pts.GetArrayElementAtIndex(i).objectReferenceValue = patrolTransforms[i];
-            });
-        }
-
         private static void BuildSystems(InputReader inputReader, GameObject player,
             int groundMask, int playerMask, int groundLayerIdx, ArenaLayer[] layers)
         {
@@ -776,6 +660,7 @@ namespace CyberPulse.Editor
             go.AddComponent<TimeManager>();
             go.AddComponent<CyberPulse.UI.PauseMenu>();
 
+            BuildAtmosphereVolume();
             var damageVol   = BuildDamageVolume();
             var critVol     = BuildCriticalVolume();
             var playerCamera = player.GetComponentInChildren<PlayerCamera>();
@@ -1236,6 +1121,42 @@ namespace CyberPulse.Editor
             return go;
         }
 
+        /// <summary>
+        /// Always-on global post-processing. Neutral tonemapping compresses the HDR
+        /// emissives (grid floor, data nodes, pulsing platforms, gate) so they read as
+        /// rich graded colour instead of clipped flat neon, and a mild Bloom restores
+        /// the glow. Crucially, referencing both effects from a Volume that's serialized
+        /// into the built scene keeps their shader variants from being stripped (URP
+        /// Global Settings has m_StripUnusedPostProcessingVariants on), so the look that
+        /// only existed in the editor now survives into the player build.
+        /// Low priority (0) lets the damage/critical volumes blend on top of it.
+        /// </summary>
+        private static Volume BuildAtmosphereVolume()
+        {
+            var go  = new GameObject("Vol_Atmosphere");
+            var vol = go.AddComponent<Volume>();
+            vol.isGlobal = true;
+            vol.weight   = 1f;
+            vol.priority = 0f;
+
+            var profile = ScriptableObject.CreateInstance<VolumeProfile>();
+
+            var tonemapping = profile.Add<Tonemapping>();
+            tonemapping.active = true;
+            tonemapping.mode.Override(TonemappingMode.Neutral);
+
+            // Threshold above 1 so only genuinely HDR emissives bloom — the tamed ramp
+            // (emission < 1) stays solid while the bright nodes/floor/platforms glow.
+            var bloom = profile.Add<Bloom>();
+            bloom.active = true;
+            bloom.threshold.Override(1.1f);
+            bloom.intensity.Override(0.7f);
+            bloom.scatter.Override(0.6f);
+
+            vol.profile = profile;
+            return vol;
+        }
+
         private static Volume BuildCriticalVolume()
         {
             var go  = new GameObject("Vol_Critical");
@@ -1501,24 +1422,36 @@ namespace CyberPulse.Editor
             return fallback;
         }
 
+        // Persisted as an asset (not a runtime Material) so the prefab serializes a real
+        // reference: a runtime material can't survive SaveAsPrefabAsset, leaving enemies with
+        // a null material and stripping the wireframe shader from builds (→ magenta enemies).
+        private const string WireframeMaterialPath = "Assets/CyberPulse/Resources/M_Enemy_Wireframe.mat";
+
         private static Material MakeWireframeMaterial()
         {
+            var existing = AssetDatabase.LoadAssetAtPath<Material>(WireframeMaterialPath);
+            if (existing != null) return existing;
+
             var wireShader = Shader.Find("CyberPulse/WireframeEnemy");
-            if (wireShader != null)
+            if (wireShader == null)
             {
-                var mat = new Material(wireShader) { name = "M_Enemy_Wireframe" };
-                mat.SetColor("_EdgeColor",     new Color(2.4f, 0.4f, 0.05f, 1f));
-                mat.SetColor("_FillColor",     new Color(0.08f, 0.01f, 0.01f, 1f));
-                mat.SetFloat("_FresnelPower",  3.5f);
-                mat.SetFloat("_EdgeWidth",     0.55f);
-                mat.SetFloat("_PulseSpeed",    1.8f);
-                mat.SetFloat("_PulseAmount",   0.25f);
-                mat.SetFloat("_EmissiveScale", 3.5f);
-                return mat;
+                Debug.LogWarning("[CyberPulse] CyberPulse/WireframeEnemy shader not found — using fallback material.");
+                return MakeSolidMaterial(EnemyColor);
             }
 
-            Debug.LogWarning("[CyberPulse] CyberPulse/WireframeEnemy shader not found — using fallback material.");
-            return MakeSolidMaterial(EnemyColor);
+            var mat = new Material(wireShader) { name = "M_Enemy_Wireframe" };
+            mat.SetColor("_EdgeColor",     new Color(2.4f, 0.4f, 0.05f, 1f));
+            mat.SetColor("_FillColor",     new Color(0.08f, 0.01f, 0.01f, 1f));
+            mat.SetFloat("_FresnelPower",  3.5f);
+            mat.SetFloat("_EdgeWidth",     0.55f);
+            mat.SetFloat("_PulseSpeed",    1.8f);
+            mat.SetFloat("_PulseAmount",   0.25f);
+            mat.SetFloat("_EmissiveScale", 3.5f);
+
+            EnsureFolder("Assets/CyberPulse/Resources");
+            AssetDatabase.CreateAsset(mat, WireframeMaterialPath);
+            AssetDatabase.SaveAssets();
+            return mat;
         }
 
         private static Material MakeWallEmissiveMaterial()

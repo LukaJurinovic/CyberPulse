@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 using CyberPulse.Systems;
 using CyberPulse.Weapons;
 
@@ -7,10 +8,12 @@ namespace CyberPulse.UI
 {
     /// <summary>
     /// ESC-toggleable pause overlay. Freezes time and disables weapon input while open.
-    /// Resume restores play; Terminate quits the application.
+    /// Resume restores play; Quit-to-menu ends the current run and loads the main menu.
     /// </summary>
     public class PauseMenu : MonoBehaviour
     {
+        private const string MainMenuScene = "MainMenu";
+
         private bool _isPaused;
         private WeaponHolder _weaponHolder;
 
@@ -69,18 +72,17 @@ namespace CyberPulse.UI
             if (GUI.Button(new Rect(x + 30f, y + 74f,  w - 60f, 46f), "[ RESUME ]",    _buttonStyle))
                 SetPaused(false);
 
-            if (GUI.Button(new Rect(x + 30f, y + 136f, w - 60f, 46f), "[ TERMINATE ]", _buttonStyle))
-                Terminate();
+            if (GUI.Button(new Rect(x + 30f, y + 136f, w - 60f, 46f), "[ QUIT TO MENU ]", _buttonStyle))
+                QuitToMenu();
         }
 
-        private void Terminate()
+        private void QuitToMenu()
         {
             Time.timeScale      = 1f;
             AudioListener.pause = false;
-            Application.Quit();
-#if UNITY_EDITOR
-            UnityEditor.EditorApplication.isPlaying = false;
-#endif
+            Cursor.lockState    = CursorLockMode.None;
+            Cursor.visible      = true;
+            SceneManager.LoadScene(MainMenuScene);
         }
 
         private void BuildStyles()

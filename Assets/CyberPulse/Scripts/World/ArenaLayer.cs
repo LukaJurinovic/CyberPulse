@@ -27,6 +27,9 @@ namespace CyberPulse.World
         [SerializeField] private float _arenaHalf       = 24f;
         [SerializeField] private float _spawnClearance  = 7f;
         [SerializeField] private int   _initialVisibleNodes = 1;
+        [Tooltip("An enemy that drops this far below the floor has clipped off the layer and is destroyed, " +
+                 "so it can't survive on a sealed-off lower floor and block this layer from clearing.")]
+        [SerializeField] private float _fallCullDepth   = 3f;
 
         [SerializeField] private ProceduralArenaGenerator _generator;
         [SerializeField] private NavMeshSurface            _navSurface;
@@ -35,8 +38,9 @@ namespace CyberPulse.World
 
         private static readonly Vector2 EntryXZ = new Vector2(0f, -22f);
 
-        private readonly List<DataNode> _nodes       = new();
+        private readonly List<DataNode> _nodes        = new();
         private readonly Queue<DataNode> _hiddenQueue = new();
+        private readonly List<EnemyHealth> _liveEnemies = new();
 
         private int  _siphonedCount;
         private int  _aliveEnemies;
@@ -122,7 +126,22 @@ namespace CyberPulse.World
         {
             if (enemy == null) return;
             _aliveEnemies++;
-            enemy.OnDeath += HandleEnemyDeath;
+            _liveEnemies.Add(enemy);
+            enemy.OnDeath += () => HandleEnemyDeath(enemy);
+        }
+
+        private void Update()
+        {
+            if (_liveEnemies.Count == 0) return;
+
+            float killY = _floorY - _fallCullDepth;
+            for (int i = _liveEnemies.Count - 1; i >= 0; i--)
+            {
+                var enemy = _liveEnemies[i];
+                if (enemy == null || enemy.IsDead) { _liveEnemies.RemoveAt(i); continue; }
+                if (enemy.transform.position.y < killY)
+                    enemy.TakeDamage(enemy.MaxHealth);
+            }
         }
 
         /// <summary>Reveal the next hidden objective node (called after each cleared wave).</summary>
@@ -152,8 +171,9 @@ namespace CyberPulse.World
             CheckCleared();
         }
 
-        private void HandleEnemyDeath()
+        private void HandleEnemyDeath(EnemyHealth enemy)
         {
+            _liveEnemies.Remove(enemy);
             _aliveEnemies = Mathf.Max(0, _aliveEnemies - 1);
             CheckCleared();
         }
