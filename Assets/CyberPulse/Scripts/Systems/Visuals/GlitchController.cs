@@ -3,10 +3,6 @@ using CyberPulse.Player;
 
 namespace CyberPulse.Systems
 {
-    /// <summary>
-    /// Drives GlitchRendererFeature._GlitchStrength on player damage.
-    /// Spikes to _peakStrength, then decays to 0 at _decaySpeed per second.
-    /// </summary>
     public class GlitchController : MonoBehaviour
     {
         [SerializeField] private GlitchRendererFeature _feature;

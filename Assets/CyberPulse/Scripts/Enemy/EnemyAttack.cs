@@ -3,10 +3,6 @@ using CyberPulse.Combat;
 
 namespace CyberPulse.Enemy
 {
-    /// <summary>
-    /// Melee-range attack. EnemyController calls TryAttack() each frame while in Attack state.
-    /// Uses OverlapSphere on the Player layer and delivers damage through IDamageable.
-    /// </summary>
     public class EnemyAttack : MonoBehaviour
     {
         [SerializeField] private int _damage = 10;

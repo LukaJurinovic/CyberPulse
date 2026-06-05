@@ -5,13 +5,6 @@ using UnityEngine;
 
 namespace CyberPulse.Systems
 {
-    /// <summary>
-    /// Analyses an AudioClip offline (energy-based onset detection) to extract BPM,
-    /// duration, and an energy timeline used by ProceduralLevelGenerator.
-    ///
-    /// Call AnalyzeClip() at any time; subscribe to OnAnalysisComplete for the result.
-    /// With a music AudioSource wired, analysis starts automatically in Start().
-    /// </summary>
     public class SongAnalyzer : MonoBehaviour
     {
         public static SongAnalyzer Instance { get; private set; }

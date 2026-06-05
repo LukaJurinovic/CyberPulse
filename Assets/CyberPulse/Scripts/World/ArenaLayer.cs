@@ -7,19 +7,6 @@ using CyberPulse.Enemy;
 
 namespace CyberPulse.World
 {
-    /// <summary>
-    /// Per-layer context for the vertical layered progression (plan Bucket B).
-    ///
-    /// Each stacked arena floor has one ArenaLayer on its root. It:
-    ///   • collects the layer's <see cref="DataNode"/>s and reveals them progressively
-    ///     (one per cleared wave) so the layer doesn't show all its objectives at once;
-    ///   • tracks the enemies WaveDirector spawns into it and how many are still alive;
-    ///   • bakes its <see cref="NavMeshSurface"/> once the procedural arena geometry is
-    ///     generated, so each stacked floor gets its own correct NavMesh;
-    ///   • fires <see cref="OnCleared"/> when the layer is fully done — all nodes
-    ///     siphoned, all assigned waves spawned, and no enemies left alive — which
-    ///     LayerManager uses to unlock the door to the next layer.
-    /// </summary>
     public class ArenaLayer : MonoBehaviour
     {
         [SerializeField] private int   _index;
@@ -56,14 +43,10 @@ namespace CyberPulse.World
         public bool       Cleared  => _cleared;
         public bool       IsTopLayer => _exitDoor == null;
 
-        /// <summary>Objective nodes siphoned so far in this layer (for HUD).</summary>
         public int NodesSiphoned => _siphonedCount;
-        /// <summary>Total objective nodes in this layer (for HUD).</summary>
         public int NodesTotal    => _nodes.Count;
-        /// <summary>Enemies still alive in this layer (for HUD).</summary>
         public int EnemiesAlive  => _aliveEnemies;
 
-        /// <summary>Fires once when this layer becomes fully cleared.</summary>
         public event Action<ArenaLayer> OnCleared;
 
         private void OnEnable()
@@ -106,7 +89,6 @@ namespace CyberPulse.World
             ResolveNodeOverlaps();
         }
 
-        /// <summary>A random walkable-ish spawn point inside this layer, away from the entry.</summary>
         public Vector3 RandomSpawnPoint()
         {
             for (int i = 0; i < 12; i++)
@@ -121,7 +103,6 @@ namespace CyberPulse.World
 
         public float FlightHeight => _floorY + 6f;
 
-        /// <summary>Track an enemy spawned into this layer; clears decrement its alive count.</summary>
         public void RegisterEnemy(EnemyHealth enemy)
         {
             if (enemy == null) return;
@@ -144,7 +125,6 @@ namespace CyberPulse.World
             }
         }
 
-        /// <summary>Reveal the next hidden objective node (called after each cleared wave).</summary>
         public void RevealNextNode()
         {
             while (_hiddenQueue.Count > 0)
@@ -156,7 +136,6 @@ namespace CyberPulse.World
             }
         }
 
-        /// <summary>WaveDirector calls this once it has spawned every wave assigned to this layer.</summary>
         public void MarkAllWavesSpawned()
         {
             if (_allWavesSpawned) return;
@@ -200,10 +179,6 @@ namespace CyberPulse.World
             ResolveNodeOverlaps();
         }
 
-        /// <summary>
-        /// Relocates any data node overlapping arena geometry to the nearest clear floor spot
-        /// (falling back to lifting it straight up). Runs once, after the arena has generated.
-        /// </summary>
         private void ResolveNodeOverlaps()
         {
             if (_nodesResolved) return;

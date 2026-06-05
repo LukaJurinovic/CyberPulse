@@ -5,15 +5,6 @@ using CyberPulse.World;
 
 namespace CyberPulse.Systems
 {
-    /// <summary>
-    /// Runtime wave spawner. Reads WaveDefinition[] (from ProceduralLevelGenerator
-    /// via SongAnalyzer) and instantiates enemy prefabs when the song time reaches
-    /// each wave's SpawnTime. Uses timeSamples / outputSampleRate for drift-free
-    /// timing (plan.md §6).
-    ///
-    /// _seekerPrefab must be wired by PlayableLevelBuilder. Until then, WaveDirector
-    /// logs a warning and skips spawning silently — the static scene enemies remain.
-    /// </summary>
     public class WaveDirector : MonoBehaviour
     {
         public static WaveDirector Instance { get; private set; }
@@ -46,10 +37,6 @@ namespace CyberPulse.Systems
         private bool _songStarted;
         private bool _winFired;
 
-        // Per-layer wave timing. Each layer's waves are re-based to the moment the
-        // player arrives on that layer (see HandleActiveLayerChanged), so upper-floor
-        // waves spawn relative to arrival rather than to absolute song time — the
-        // player can clear floors at their own pace and still face every wave.
         private float _layerActivatedAt;
         private float _layerBaseSpawnTime;
 
@@ -107,11 +94,6 @@ namespace CyberPulse.Systems
                 }
             }
 
-            // The song is the run clock. Single-arena mode wins when it ends with every
-            // wave sent and the arena clear; layered mode fails if it ends before the
-            // player has fought up through every floor (the win itself fires from
-            // LayerManager when the top floor clears). Per-layer wave re-basing still
-            // guarantees each floor is populated for as long as the song is playing.
             if (LayerManager.Instance == null && _musicSource != null)
             {
                 if (!_winFired && _songStarted && !_musicSource.isPlaying && !AudioListener.pause
@@ -156,10 +138,7 @@ namespace CyberPulse.Systems
             GameManager.Instance?.SetPhase(GamePhase.Siphon);
         }
 
-        /// <summary>
-        /// Splits the wave timeline evenly across the LayerManager's stacked arenas so each
-        /// layer fights its own segment. Set to null in single-arena mode (no gating).
-        /// </summary>
+
         private void AssignWaveLayers()
         {
             int layerCount = LayerManager.Instance != null ? LayerManager.Instance.LayerCount : 0;
@@ -174,17 +153,6 @@ namespace CyberPulse.Systems
                 _waveLayer[i] = Mathf.Min(i * layerCount / _waves.Length, layerCount - 1);
         }
 
-        /// <summary>
-        /// Once the next pending wave belongs to a higher layer (or none remain), the active
-        /// layer has received every wave it ever will — tell it so it can become clearable.
-        /// </summary>
-        /// <summary>
-        /// Re-bases the wave schedule when the player ascends to a new layer. The layer's
-        /// first pending wave becomes due immediately on arrival and the rest keep their
-        /// original relative spacing, so each floor is fought regardless of where the song
-        /// clock happens to be. The ground layer (index 0) keeps absolute song timing.
-        /// A layer with no waves of its own is marked complete at once so it can still clear.
-        /// </summary>
         private void HandleActiveLayerChanged(int newIndex)
         {
             if (newIndex <= 0 || _waves == null || _waveLayer == null) return;
@@ -254,7 +222,6 @@ namespace CyberPulse.Systems
                       (layer != null ? $" (layer {layer.Index})" : ""));
         }
 
-        /// <summary>Spawn position inside a specific arena layer; ground units snap to its NavMesh.</summary>
         private Vector3 ResolveLayerSpawn(ArenaLayer layer, EnemyType type)
         {
             if (type == EnemyType.SphereAerial)
@@ -270,11 +237,6 @@ namespace CyberPulse.Systems
             return ground;
         }
 
-        /// <summary>
-        /// Keeps spawns out of walls. Grounded enemies snap to the NavMesh (carved cover
-        /// is excluded, so a position inside a block resolves to the nearest open floor).
-        /// Aerial enemies keep their height but jitter off any geometry they'd overlap.
-        /// </summary>
         private Vector3 ResolveSpawnPosition(Vector3 desired, EnemyType type)
         {
             bool aerial = type == EnemyType.SphereAerial;

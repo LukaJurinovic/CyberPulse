@@ -4,12 +4,6 @@ using CyberPulse.Combat;
 
 namespace CyberPulse.Enemy
 {
-    /// <summary>
-    /// Sphere Aerial Striker. Hovers at y=5-7, drifts laterally, and charges a
-    /// laser-column attack with a ground AoE indicator. Dealing 40% of its max HP
-    /// during the charge interrupts the strike.
-    /// Does NOT use NavMesh — purely transform-driven.
-    /// </summary>
     [RequireComponent(typeof(EnemyHealth))]
     [RequireComponent(typeof(EnemyDeathShards))]
     [RequireComponent(typeof(EnemySensor))]

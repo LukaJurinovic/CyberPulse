@@ -4,14 +4,6 @@ using CyberPulse.Combat;
 
 namespace CyberPulse.Weapons
 {
-    /// <summary>
-    /// Self-propelled projectile. Moves via Rigidbody, deals damage on first solid hit,
-    /// then destroys itself. Also self-destructs after <c>_lifetime</c> seconds.
-    ///
-    /// Optional homing: call SetHoming(target, strength) after creation.
-    /// Optional AoE on impact: set _wallAoeRadius > 0 (deals _damage in radius on any hit).
-    /// Implements IDamageable so player shots can destroy incoming projectiles.
-    /// </summary>
     [RequireComponent(typeof(Rigidbody))]
     public class Projectile : MonoBehaviour, IDamageable
     {
@@ -43,10 +35,6 @@ namespace CyberPulse.Weapons
 
         public void SetRicochet(int bounces) { _bouncesRemaining = bounces; }
 
-        /// <summary>
-        /// Register a callback that fires when a player weapon destroys this projectile via
-        /// <see cref="TakeDamage"/>. Used by homing missiles to reward interception.
-        /// </summary>
         public void SetInterceptReward(Action callback) { _onIntercept = callback; }
 
         private void Awake()

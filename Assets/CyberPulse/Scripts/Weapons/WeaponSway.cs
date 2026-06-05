@@ -4,10 +4,6 @@ using CyberPulse.Player;
 
 namespace CyberPulse.Weapons
 {
-    /// <summary>
-    /// Procedural weapon sway: look-lag, movement bob, and idle breathing.
-    /// Attach to the weapon root object (child of the camera).
-    /// </summary>
     public class WeaponSway : MonoBehaviour
     {
         [Header("Dependencies")]

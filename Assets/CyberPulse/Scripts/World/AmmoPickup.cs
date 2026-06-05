@@ -3,11 +3,6 @@ using CyberPulse.Weapons;
 
 namespace CyberPulse.World
 {
-    /// <summary>
-    /// A walk-over ammo pickup. Dropped by enemies on death (see EnemyHealth) and
-    /// built entirely at runtime via <see cref="Spawn"/> so no prefab asset is needed.
-    /// On contact with the player it tops up the active weapon's reserve ammo.
-    /// </summary>
     [RequireComponent(typeof(SphereCollider))]
     public class AmmoPickup : MonoBehaviour
     {
@@ -23,10 +18,6 @@ namespace CyberPulse.World
 
         private static Material _sharedMat;
 
-        /// <summary>
-        /// Build a pickup at a world position and return it. Constructs its own visual,
-        /// trigger collider, and emissive material so callers need no prefab reference.
-        /// </summary>
         public static AmmoPickup Spawn(Vector3 position, int amount)
         {
             var go = new GameObject("AmmoPickup");

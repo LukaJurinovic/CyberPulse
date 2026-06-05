@@ -5,10 +5,7 @@ using CyberPulse.Weapons;
 
 namespace CyberPulse.UI
 {
-    /// <summary>
-    /// Immediate-mode dynamic crosshair. Uses OnGUI — no Canvas required.
-    /// Four lines + center dot. Gap expands based on player speed and airborne state.
-    /// </summary>
+
     public class CrosshairUI : MonoBehaviour
     {
         [SerializeField] private PlayerController _controller;

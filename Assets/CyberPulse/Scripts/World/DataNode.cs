@@ -4,10 +4,6 @@ using CyberPulse.Combat;
 
 namespace CyberPulse.World
 {
-    /// <summary>
-    /// Shootable data node. One hit activates it; activation registers with DataNodeManager.
-    /// IDamageable means any weapon hits it automatically — no extra input binding needed.
-    /// </summary>
     [RequireComponent(typeof(Collider))]
     public class DataNode : MonoBehaviour, IDamageable
     {
@@ -27,7 +23,6 @@ namespace CyberPulse.World
         public bool IsDead   => _siphoned;
         public bool IsHidden { get; private set; }
 
-        /// <summary>Fires once when the node is activated by any hit.</summary>
         public event Action OnSiphoned;
 
         private bool _siphoned;
@@ -45,10 +40,8 @@ namespace CyberPulse.World
                 DataNodeManager.Register(this);
         }
 
-        /// <summary>Hide the node — disables its renderer, light and collider.</summary>
         public void Hide()    => SetVisible(false);
 
-        /// <summary>Reveal a hidden node so it can be siphoned.</summary>
         public void Reveal()  => SetVisible(true);
 
         private void SetVisible(bool visible)

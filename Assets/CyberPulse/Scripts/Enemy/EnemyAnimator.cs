@@ -3,11 +3,7 @@ using UnityEngine.AI;
 
 namespace CyberPulse.Enemy
 {
-    /// <summary>
-    /// Optional bridge between EnemyController state and an Animator.
-    /// Add to enemies that have a skinned rig. Safe to omit on placeholder capsule enemies.
-    /// Drives parameters: Speed (float), IsDead (bool), Attack (trigger).
-    /// </summary>
+
     [RequireComponent(typeof(EnemyController))]
     public class EnemyAnimator : MonoBehaviour
     {

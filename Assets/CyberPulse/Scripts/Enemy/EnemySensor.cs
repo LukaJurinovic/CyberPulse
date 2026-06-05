@@ -3,10 +3,6 @@ using UnityEngine;
 
 namespace CyberPulse.Enemy
 {
-    /// <summary>
-    /// Periodic FOV + line-of-sight check. Fires OnPlayerSpotted / OnPlayerLost events
-    /// that EnemyController subscribes to for state transitions.
-    /// </summary>
     public class EnemySensor : MonoBehaviour
     {
         [SerializeField] private float _detectionRange = 15f;
@@ -18,13 +14,10 @@ namespace CyberPulse.Enemy
         private float _timer;
         private bool _playerInSight;
 
-        /// <summary>True while the player is confirmed inside FOV with clear line of sight.</summary>
         public bool PlayerInSight => _playerInSight;
 
-        /// <summary>Fires with the player's root transform when first spotted.</summary>
         public event Action<Transform> OnPlayerSpotted;
 
-        /// <summary>Fires when the player leaves FOV or is occluded.</summary>
         public event Action OnPlayerLost;
 
         private void Update()

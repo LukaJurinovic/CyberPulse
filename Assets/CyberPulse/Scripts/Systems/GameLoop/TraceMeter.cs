@@ -8,19 +8,6 @@ using CyberPulse.Player;
 
 namespace CyberPulse.Systems
 {
-    /// <summary>
-    /// Unified survival/health mechanic. Replaces player HP entirely.
-    ///
-    /// Fill sources:
-    ///   • Passive:       +_passiveFillPerSecond always (paused for _beatStopBeats after any on-beat shot)
-    ///   • Enemy hit:     +_tracePerHit per hit on the player
-    ///
-    /// Drain sources:
-    ///   • Kill:          -_drainOnKill per enemy killed
-    ///   • Score milestone (every 500 pts): -_drainPerMilestone
-    ///
-    /// Thresholds: Alert 50%, Critical 80%, Fail 100%.
-    /// </summary>
     public class TraceMeter : MonoBehaviour
     {
         public static TraceMeter Instance { get; private set; }

@@ -6,10 +6,6 @@ using CyberPulse.Weapons;
 
 namespace CyberPulse.UI
 {
-    /// <summary>
-    /// ESC-toggleable pause overlay. Freezes time and disables weapon input while open.
-    /// Resume restores play; Quit-to-menu ends the current run and loads the main menu.
-    /// </summary>
     public class PauseMenu : MonoBehaviour
     {
         private const string MainMenuScene = "MainMenu";

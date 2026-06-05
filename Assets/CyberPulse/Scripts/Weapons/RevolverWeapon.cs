@@ -4,12 +4,6 @@ using CyberPulse.Systems;
 
 namespace CyberPulse.Weapons
 {
-    /// <summary>
-    /// High-damage single-shot revolver. 6-round cylinder; each reload swaps the
-    /// whole cylinder. On-beat shots deal 1.5× damage via WeaponBase read of BeatClock.
-    /// Slow fire rate rewards deliberate, rhythmic play.
-    /// Special (P3 ricochet) is a no-op until implemented.
-    /// </summary>
     public class RevolverWeapon : WeaponBase
     {
         [Header("Revolver")]

@@ -5,10 +5,7 @@ using CyberPulse.Systems;
 
 namespace CyberPulse.Weapons
 {
-    /// <summary>
-    /// Base class for all weapons. Handles fire rate gating, magazine/reserve ammo,
-    /// reload timing, muzzle flash, and audio. Subclasses implement <see cref="FireProjectile"/>.
-    /// </summary>
+
     public abstract class WeaponBase : MonoBehaviour
     {
         [Header("Identity")]
@@ -44,7 +41,6 @@ namespace CyberPulse.Weapons
         private Coroutine _reloadCoroutine;
         private Coroutine _fadeCoroutine;
 
-        /// <summary>Camera transform from the last TryFire call. Subclasses can read this in TriggerSpecial.</summary>
         protected Transform _lastCameraTransform;
 
         public string WeaponName  => _weaponName;
@@ -55,16 +51,12 @@ namespace CyberPulse.Weapons
         public bool IsReloading   => _isReloading;
         public bool IsAutomatic   => _isAutomatic;
 
-        /// <summary>Set by BeatReactor — reduces fire rate to 60% while off-rhythm.</summary>
         public static float RhythmFireMultiplier { get; set; } = 1f;
 
-        /// <summary>Index of the weapon slot last used to fire. ScoreManager reads this for variety bonus.</summary>
         public static int LastFiredWeaponSlotIndex { get; set; } = 0;
 
-        /// <summary>Fires when ammo state changes so the HUD can update.</summary>
         public event Action OnAmmoChanged;
 
-        /// <summary>Fires on any weapon's successful shot. BeatReactor uses this.</summary>
         public static event Action OnAnyWeaponFired;
 
         protected virtual void Awake()
@@ -72,7 +64,6 @@ namespace CyberPulse.Weapons
             _currentAmmo = _magazineSize;
         }
 
-        /// <summary>Attempt to fire. Returns false if gated by cooldown, reloading, or empty.</summary>
         public bool TryFire(Transform cameraTransform)
         {
             if (_isReloading) return false;
@@ -98,7 +89,6 @@ namespace CyberPulse.Weapons
             return true;
         }
 
-        /// <summary>Start a reload if the magazine is not full and reserve ammo exists. Instant on-beat.</summary>
         public void TryReload()
         {
             if (_isReloading) return;
@@ -116,10 +106,6 @@ namespace CyberPulse.Weapons
             _reloadCoroutine = StartCoroutine(ReloadRoutine());
         }
 
-        /// <summary>
-        /// Add ammo to the reserve pool, clamped to the reserve cap. Used by the on-beat
-        /// kill refill and enemy ammo drops. Fires OnAmmoChanged so the HUD updates.
-        /// </summary>
         public void AddReserveAmmo(int amount)
         {
             if (amount <= 0) return;
@@ -127,7 +113,7 @@ namespace CyberPulse.Weapons
             OnAmmoChanged?.Invoke();
         }
 
-        /// <summary>Cancel an in-progress reload (e.g., when weapon is switched away).</summary>
+
         public void CancelReload()
         {
             if (!_isReloading) return;
@@ -136,23 +122,13 @@ namespace CyberPulse.Weapons
             _isReloading = false;
         }
 
-        /// <summary>Perform the actual shot — raycast or instantiate projectile.</summary>
+
         protected abstract void FireProjectile(Transform cameraTransform);
 
-        /// <summary>Return true to loop fire audio while the trigger is held instead of one-shot per shot.</summary>
         protected virtual bool UseLoopedFireAudio() => false;
 
-        /// <summary>
-        /// Called by SyncGauge when the player spends SYNC on this weapon's special.
-        /// Override in each weapon subclass. Base is a no-op so subclasses without a
-        /// special defined yet compile cleanly.
-        /// </summary>
         public virtual void TriggerSpecial() { }
 
-        /// <summary>
-        /// Fires one shot bypassing cooldown — for burst specials.
-        /// Handles ammo, muzzle flash, audio, and events.
-        /// </summary>
         protected void FireBurstShot(Transform cam)
         {
             if (_currentAmmo <= 0) return;

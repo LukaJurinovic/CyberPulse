@@ -6,10 +6,6 @@ using CyberPulse.Systems;
 
 namespace CyberPulse.Weapons
 {
-    /// <summary>
-    /// Hitscan weapon — instant raycast hit, optional pellet spread (shotgun mode).
-    /// Draws a short procedural LineRenderer bullet trace that fades out.
-    /// </summary>
     public class HitscanWeapon : WeaponBase
     {
         [Header("Hitscan")]

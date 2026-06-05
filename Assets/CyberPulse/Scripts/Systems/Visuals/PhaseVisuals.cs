@@ -3,11 +3,6 @@ using UnityEngine.Rendering;
 
 namespace CyberPulse.Systems
 {
-    /// <summary>
-    /// Reacts to GameManager phase changes with ambient light shifts and an
-    /// optional Post-Processing Volume blend. Handles the cyan→red color inversion
-    /// on Extract without requiring custom shaders.
-    /// </summary>
     public class PhaseVisuals : MonoBehaviour
     {
         [Header("Extract Phase")]

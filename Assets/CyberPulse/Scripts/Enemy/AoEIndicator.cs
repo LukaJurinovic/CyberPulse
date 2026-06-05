@@ -2,10 +2,6 @@ using UnityEngine;
 
 namespace CyberPulse.Enemy
 {
-    /// <summary>
-    /// Ground-ring warning indicator. Fades from cyan to red over its lifetime,
-    /// then self-destructs. Used by EnemySphereAerial for the charge telegraph.
-    /// </summary>
     public class AoEIndicator : MonoBehaviour
     {
         private LineRenderer _ring;

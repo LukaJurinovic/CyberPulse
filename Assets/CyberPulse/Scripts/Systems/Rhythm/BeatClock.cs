@@ -3,19 +3,6 @@ using UnityEngine;
 
 namespace CyberPulse.Systems
 {
-    /// <summary>
-    /// Singleton beat tracker. Reads song position from an AudioSource via
-    /// timeSamples / AudioSettings.outputSampleRate (drift-free per plan.md §6).
-    ///
-    /// BeatPhase 0-1 within each beat. IsOnBeat is true within ±_beatWindowSize
-    /// of the beat crossing (i.e. phase &lt; window OR phase &gt; 1 - window).
-    ///
-    /// OnBeat   — fires on every beat crossing.
-    /// OnBeatWindow — fires when entering the leading beat window.
-    ///
-    /// BPM is set automatically from SongAnalyzer.OnAnalysisComplete, or can be
-    /// set manually via Initialize().
-    /// </summary>
     public class BeatClock : MonoBehaviour
     {
         public static BeatClock Instance { get; private set; }

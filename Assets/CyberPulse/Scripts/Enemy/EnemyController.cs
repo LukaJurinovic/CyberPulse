@@ -4,10 +4,6 @@ using UnityEngine.AI;
 
 namespace CyberPulse.Enemy
 {
-    /// <summary>
-    /// State machine driving enemy locomotion: Idle → Patrol → Chase → Attack → Dead.
-    /// Subscribes to EnemySensor events for player detection and EnemyHealth.OnDeath for death.
-    /// </summary>
     [RequireComponent(typeof(NavMeshAgent))]
     [RequireComponent(typeof(EnemySensor))]
     [RequireComponent(typeof(EnemyAttack))]

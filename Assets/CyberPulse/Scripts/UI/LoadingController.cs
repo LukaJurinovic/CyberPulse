@@ -6,19 +6,6 @@ using CyberPulse.Systems;
 
 namespace CyberPulse.UI
 {
-    /// <summary>
-    /// Boot orchestrator for the gameplay scene. Holds music playback until the
-    /// chosen song has been analysed offline, shows an OnGUI loading screen with the
-    /// detected BPM/duration/intensity, then starts playback — which begins the song
-    /// clock that BeatClock and WaveDirector run on. Analysing before the first note
-    /// means wave timing and the beat window are aligned from bar one.
-    ///
-    /// Wired by PlayableLevelBuilder, which also sets the music sources' playOnAwake,
-    /// SongAnalyzer._analyzeOnStart and DynamicMusicPlayer._playOnStart to false so
-    /// this controller owns the boot sequence. If those gates are left at their
-    /// defaults (e.g. an old scene with no LoadingController) the systems self-start
-    /// exactly as before — this component is purely additive.
-    /// </summary>
     public class LoadingController : MonoBehaviour
     {
         [Header("Audio")]

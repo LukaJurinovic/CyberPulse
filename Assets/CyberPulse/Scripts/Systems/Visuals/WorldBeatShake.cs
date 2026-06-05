@@ -3,14 +3,6 @@ using UnityEngine;
 
 namespace CyberPulse.Systems
 {
-    /// <summary>
-    /// Vibrates interior cover/platform geometry to the beat. Listens to
-    /// BeatClock.OnBeat for impulse triggers and scales amplitude by
-    /// AudioAnalyzer.BassAmplitude. Decays back to rest each frame.
-    ///
-    /// Items are gathered lazily so the script can be attached before
-    /// ProceduralArenaGenerator has spawned its children.
-    /// </summary>
     public class WorldBeatShake : MonoBehaviour
     {
         [SerializeField] private float _baseAmplitude = 0.18f;

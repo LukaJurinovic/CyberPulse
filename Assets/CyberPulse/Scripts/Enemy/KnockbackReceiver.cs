@@ -2,11 +2,6 @@ using UnityEngine;
 
 namespace CyberPulse.Enemy
 {
-    /// <summary>
-    /// Receives a knockback impulse and applies it as a decaying velocity
-    /// displacement each frame. Added lazily by ShotgunWeapon.TriggerSpecial
-    /// on the first knockback hit — does not need to be pre-attached.
-    /// </summary>
     public class KnockbackReceiver : MonoBehaviour
     {
         private Vector3 _velocity;

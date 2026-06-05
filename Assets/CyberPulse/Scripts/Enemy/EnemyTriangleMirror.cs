@@ -4,12 +4,6 @@ using CyberPulse.Weapons;
 
 namespace CyberPulse.Enemy
 {
-    /// <summary>
-    /// Triangle Mirror Fighter. Mirrors player capabilities at reduced scale:
-    /// fires orange projectiles, has 3 dashes (4s recharge), moves at 65% player speed.
-    /// No NavMesh — transform-based movement.
-    /// Counter-play: bait the 3 dashes then punish during the 4s recharge window.
-    /// </summary>
     [RequireComponent(typeof(EnemyHealth))]
     [RequireComponent(typeof(EnemyDeathShards))]
     [RequireComponent(typeof(EnemySensor))]

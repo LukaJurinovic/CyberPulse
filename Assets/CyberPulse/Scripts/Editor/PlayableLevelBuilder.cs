@@ -16,18 +16,6 @@ using CyberPulse.World;
 
 namespace CyberPulse.Editor
 {
-    /// <summary>
-    /// Builds the closed, fully playable test level in one click.
-    /// Menu: CyberPulse ▶ Build Playable Level
-    ///
-    /// Creates Assets/Scenes/PlayableTestLevel.unity with:
-    ///   - A 3-layer stacked arena connected by ramps and locked doors that gate vertical progression
-    ///   - Full player hierarchy (movement, dash, camera, weapon) plus crosshair and diegetic HUD
-    ///   - Win/Fail end screens and damage volumes
-    ///   - Five enemy prefabs (Seeker, Sphere, Triangle, Cylinder, Cube) wired for runtime wave spawning
-    ///   - NavMesh baked for ground-enemy pathfinding
-    ///   - All serialized references wired — no Inspector work needed
-    /// </summary>
     public static class PlayableLevelBuilder
     {
         private const string ScenePath       = "Assets/Scenes/PlayableTestLevel.unity";

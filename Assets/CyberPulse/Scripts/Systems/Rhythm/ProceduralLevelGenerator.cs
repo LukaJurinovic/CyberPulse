@@ -13,10 +13,6 @@ namespace CyberPulse.Systems
         public Vector3[]   SpawnPositions;
     }
 
-    /// <summary>
-    /// Translates a SongProfile into a WaveDefinition array.
-    /// Static utility — no MonoBehaviour needed.
-    /// </summary>
     public static class ProceduralLevelGenerator
     {
 

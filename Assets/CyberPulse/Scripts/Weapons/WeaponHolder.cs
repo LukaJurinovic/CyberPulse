@@ -4,12 +4,7 @@ using CyberPulse.Systems;
 
 namespace CyberPulse.Weapons
 {
-    /// <summary>
-    /// Manages the equipped weapon array. Handles all weapon-related input forwarding,
-    /// weapon switching (scroll wheel + number keys), and passes the camera transform
-    /// to the active weapon for firing direction.
-    /// Attach to the Player root. Weapons should be children of a WeaponSocket transform.
-    /// </summary>
+
     public class WeaponHolder : MonoBehaviour
     {
         [Header("Dependencies")]

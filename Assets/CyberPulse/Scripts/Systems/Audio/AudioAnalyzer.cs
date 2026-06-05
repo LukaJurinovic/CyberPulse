@@ -2,15 +2,6 @@ using UnityEngine;
 
 namespace CyberPulse.Systems
 {
-    /// <summary>
-    /// Reads audio data from the AudioListener each frame and exposes smoothed amplitudes.
-    ///
-    /// Amplitude   — RMS of raw output samples; reliable 0-1 range for any music source.
-    /// BassAmplitude — FFT bins 1-5  (~85-430 Hz).  Skips DC bin 0.
-    /// MidAmplitude  — FFT bins 8-30 (~680-2580 Hz).
-    ///
-    /// Used by EnvironmentAudioReactor to drive emissive wall pulsing.
-    /// </summary>
     public class AudioAnalyzer : MonoBehaviour
     {
         public static AudioAnalyzer Instance { get; private set; }

@@ -8,10 +8,6 @@ using CyberPulse.Systems;
 
 namespace CyberPulse.UI
 {
-    /// <summary>
-    /// Drives the main menu — fades in on load, fades out before scene transition.
-    /// Called by button OnClick events wired in MainMenuBuilder.
-    /// </summary>
     public class MainMenuController : MonoBehaviour
     {
         private const string GameScene = "PlayableTestLevel";

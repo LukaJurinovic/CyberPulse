@@ -4,12 +4,7 @@ using CyberPulse.Input;
 
 namespace CyberPulse.Player
 {
-    /// <summary>
-    /// FPS camera controller. Attach to the <b>CameraPivot</b> child of the Player root.
-    /// Handles mouse/stick look, dynamic FOV, head bob, dash kickback, and wall-slide roll.
-    /// The actual <see cref="Camera"/> component must live on the <b>MainCamera</b> child of
-    /// CameraPivot and be assigned to <c>_camera</c> in the Inspector.
-    /// </summary>
+
     public class PlayerCamera : MonoBehaviour
     {
         [Header("Dependencies")]

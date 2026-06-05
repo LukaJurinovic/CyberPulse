@@ -7,21 +7,6 @@ using Random = UnityEngine.Random;
 
 namespace CyberPulse.World
 {
-    /// <summary>
-    /// Generates arena interior obstacles procedurally at runtime once song analysis completes.
-    ///
-    /// Archetypes:
-    ///   • Pillar   — tall thin column (chokepoints / LOS breaks)
-    ///   • Wall     — long narrow slab (random N-S / E-W orientation)
-    ///   • Cover    — low crouchable box (occasionally elevated)
-    ///   • Bunker   — wide medium block (35% chance of an L-wing)
-    ///   • Platform — thin wide slab raised off the floor (mid-tier)
-    ///   • Tower    — chunky pillar with a flat top at high altitude (high-tier)
-    ///
-    /// Towers/Platforms publish their top surfaces as <see cref="ElevatedAnchors"/>
-    /// for DataBitRenderer to cluster bits around, and trigger placement of a JumpPad
-    /// at their base so the player can actually reach them.
-    /// </summary>
     public class ProceduralArenaGenerator : MonoBehaviour
     {
         public static ProceduralArenaGenerator Instance { get; private set; }
@@ -57,13 +42,10 @@ namespace CyberPulse.World
         private readonly List<Rect>     _occupied = new();
         private readonly List<Vector3>  _elevatedAnchors = new();
 
-        /// <summary>World positions of platform/tower tops, exposed to DataBitRenderer.</summary>
         public IReadOnlyList<Vector3> ElevatedAnchors => _elevatedAnchors;
 
-        /// <summary>Fires once the procedural pass finishes.</summary>
         public event Action OnArenaGenerated;
 
-        /// <summary>True once Generate() has run at least once (for late NavMesh bakes).</summary>
         public bool HasGenerated { get; private set; }
 
         private enum Archetype { Pillar, Wall, Cover, Bunker, Platform, Tower }
@@ -205,10 +187,6 @@ namespace CyberPulse.World
             _occupied.Add(new Rect(wx - wingW * 0.5f, wz - wingD * 0.5f, wingW, wingD));
         }
 
-        /// <summary>
-        /// Places a 1.4×1.4 cyan jump-pad on the floor adjacent to an elevated
-        /// block's footprint. Skips silently if no clear spot is found.
-        /// </summary>
         private void TryPlaceJumpPad(GameObject parent, float bx, float bz, float bw, float bd)
         {
             const float padSize = 1.4f;

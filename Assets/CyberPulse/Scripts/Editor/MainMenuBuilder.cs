@@ -11,20 +11,6 @@ using CyberPulse.UI;
 
 namespace CyberPulse.Editor
 {
-    /// <summary>
-    /// Builds the main menu scene in one click.
-    /// Menu: CyberPulse ▶ Build Main Menu
-    ///
-    /// Creates Assets/Scenes/MainMenu.unity with:
-    ///   - Full-screen cyberpunk UI (title, subtitle, mission brief, two buttons)
-    ///   - Atmospheric background camera + cyan point lights + data-bits
-    ///   - Fade-in on load, fade-out on transition
-    ///   - Title glitch flicker animation
-    ///   - Same music track at lower volume
-    ///
-    /// AFTER BUILDING: add both scenes to File → Build Settings (in order:
-    ///   0 = MainMenu, 1 = PlayableTestLevel).
-    /// </summary>
     public static class MainMenuBuilder
     {
         private const string ScenePath = "Assets/Scenes/MainMenu.unity";

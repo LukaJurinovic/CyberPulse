@@ -5,17 +5,6 @@ using CyberPulse.Weapons;
 
 namespace CyberPulse.Systems
 {
-    /// <summary>
-    /// Tracks score and combo multiplier.
-    ///
-    /// Combo rules:
-    ///   • Kill with same weapon as last kill    → +1 combo
-    ///   • Kill with different weapon (hot-swap) → +2 combo (variety bonus)
-    ///   • Combo resets after _comboResetTime seconds without a kill
-    ///
-    /// Score milestones (every _scoreMilestone pts) fire OnMilestoneReached for TraceMeter drain.
-    /// Weapon specials call AddSpecialScore() — score is added and combo timer refreshed.
-    /// </summary>
     public class ScoreManager : MonoBehaviour
     {
         public static ScoreManager Instance { get; private set; }

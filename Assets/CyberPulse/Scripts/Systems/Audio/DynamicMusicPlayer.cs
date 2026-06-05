@@ -2,20 +2,6 @@ using UnityEngine;
 
 namespace CyberPulse.Systems
 {
-    /// <summary>
-    /// Crossfades two music AudioSources (ambient stem + action stem) based on the
-    /// TraceMeter's normalised value.
-    ///
-    /// Blend curve:
-    ///   0  – blendStart  → ambient full, action silent
-    ///   blendStart – blendEnd → linear crossfade
-    ///   blendEnd – 1.0        → action full, ambient silent
-    ///
-    /// Single-stem setup: assign the same AudioClip to both sources. The action
-    /// source is held silent until the trace threshold is crossed and its playback
-    /// is synced to the ambient source in Start() to prevent phasing artefacts.
-    /// When a proper action stem is available, swap in the new clip on _actionSrc.
-    /// </summary>
     public class DynamicMusicPlayer : MonoBehaviour
     {
         [SerializeField] private AudioSource _ambientSrc;

@@ -4,11 +4,6 @@ using System.Text;
 
 namespace CyberPulse.UI
 {
-    /// <summary>
-    /// Win32 GetOpenFileNameW wrapper. All filter-string fields use IntPtr so the
-    /// embedded null chars that separate each filter pair are preserved.
-    /// Only compiled on Windows; caller must guard with #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN.
-    /// </summary>
     public static class WindowsFilePicker
     {
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
@@ -45,7 +40,6 @@ namespace CyberPulse.UI
         private const int OFN_HIDEREADONLY  = 0x0004;
         private const int OFN_NOCHANGEDIR   = 0x0008;
 
-        /// <summary>Opens a Windows file picker filtered to audio files. Returns the selected path or null.</summary>
         public static string OpenAudioFile()
         {
             byte[] filterBytes = BuildWideString("Audio Files\0*.mp3;*.wav;*.ogg\0\0");

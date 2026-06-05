@@ -4,14 +4,6 @@ using CyberPulse.World;
 
 namespace CyberPulse.Systems
 {
-    /// <summary>
-    /// Renders 1000 tiny glowing cubes distributed around the arena using
-    /// Graphics.DrawMeshInstanced — GPU-side, zero per-instance GameObjects.
-    ///
-    /// Each cube orbits a fixed cluster centre with a unique phase and radius.
-    /// When the player enters _repelRadius units, nearby cubes scatter outward
-    /// and slowly drift back once the player leaves.
-    /// </summary>
     public class DataBitRenderer : MonoBehaviour
     {
         [SerializeField] private Transform _player;

@@ -4,12 +4,6 @@ using CyberPulse.Weapons;
 
 namespace CyberPulse.Enemy
 {
-    /// <summary>
-    /// Cylinder Homing Launcher. Strafe-orbits the player at mid-range and fires
-    /// homing missiles every 3s. Missiles arc toward the player, destroy on 1 hit
-    /// from player weapons, and deal AoE damage on wall contact.
-    /// No NavMesh — transform-based orbit.
-    /// </summary>
     [RequireComponent(typeof(EnemyHealth))]
     [RequireComponent(typeof(EnemyDeathShards))]
     [RequireComponent(typeof(EnemySensor))]

@@ -3,12 +3,6 @@ using CyberPulse.Combat;
 
 namespace CyberPulse.Enemy
 {
-    /// <summary>
-    /// Cube Splitter. Slow, aggressive, seeks directly toward the player.
-    /// On death, spawns 4 half-scale Splitter_Small cubes that are faster and melee-only.
-    /// Small cubes do NOT split further.
-    /// No NavMesh — Vector3.MoveTowards seek.
-    /// </summary>
     [RequireComponent(typeof(EnemyHealth))]
     [RequireComponent(typeof(EnemyDeathShards))]
     [RequireComponent(typeof(EnemySensor))]
@@ -34,7 +28,6 @@ namespace CyberPulse.Enemy
         private bool  _inMelee;
         private float _baseY;
 
-        /// <summary>Configure this instance as a split-spawn before SetActive(true).</summary>
         public void InitAsSplit(Transform playerTarget, LayerMask playerLayer)
         {
             _isSplit     = true;

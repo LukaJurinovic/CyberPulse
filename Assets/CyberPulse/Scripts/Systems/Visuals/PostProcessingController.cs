@@ -5,14 +5,6 @@ using CyberPulse.Player;
 
 namespace CyberPulse.Systems
 {
-    /// <summary>
-    /// Drives post-processing reactions to gameplay events:
-    ///   - Chromatic Aberration spike when the player takes damage (drives a Volume weight)
-    ///   - Mini screen shake on any enemy kill
-    ///   - Full screen shake on player damage
-    /// Requires a dedicated "Damage" Volume (isGlobal=true, weight starts at 0) whose
-    /// profile contains a ChromaticAberration override at intensity 0.85.
-    /// </summary>
     public class PostProcessingController : MonoBehaviour
     {
         [Header("Post-Processing")]

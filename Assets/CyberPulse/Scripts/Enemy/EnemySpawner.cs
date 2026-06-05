@@ -4,11 +4,6 @@ using CyberPulse.Systems;
 
 namespace CyberPulse.Enemy
 {
-    /// <summary>
-    /// Spawns enemies during the Purge phase and advances to Extract when all are dead.
-    /// Listens to GameManager.OnPhaseChanged; also exposes StartSpawning() for manual trigger.
-    /// Enable _autoStart to test without a data-node system in place.
-    /// </summary>
     public class EnemySpawner : MonoBehaviour
     {
         [Header("Prefabs")]

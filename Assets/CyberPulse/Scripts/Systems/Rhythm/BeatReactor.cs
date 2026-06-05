@@ -6,17 +6,6 @@ using CyberPulse.Weapons;
 
 namespace CyberPulse.Systems
 {
-    /// <summary>
-    /// Bridges BeatClock to all rhythm-driven gameplay rules:
-    ///
-    ///   • On-beat shot:   SYNC +8  (damage bonus is applied inside HitscanWeapon)
-    ///   • On-beat kill:   SYNC +25
-    ///   • On-beat dash:   SYNC +5, cooldown reset (P1 — ready for wiring)
-    ///   • Damage taken:   SYNC -10
-    ///   • Off-rhythm 2s:  movement speed ×0.7, drain signal → SyncGauge
-    ///
-    /// References wired by PlayableLevelBuilder.
-    /// </summary>
     public class BeatReactor : MonoBehaviour
     {
         public static BeatReactor Instance { get; private set; }

@@ -5,11 +5,6 @@ using UnityEngine.Rendering.RenderGraphModule;
 
 namespace CyberPulse.Systems
 {
-    /// <summary>
-    /// URP ScriptableRendererFeature that blits the camera through GlitchEffect.shader.
-    /// Add this to the active UniversalRendererData asset (or let PlayableLevelBuilder do it).
-    /// GlitchController drives the _GlitchStrength property on the material each frame.
-    /// </summary>
     public class GlitchRendererFeature : ScriptableRendererFeature
     {
         public Material material;

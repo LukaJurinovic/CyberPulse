@@ -2,14 +2,6 @@ using UnityEngine;
 
 namespace CyberPulse.Enemy
 {
-    /// <summary>
-    /// Plays a rising-rate beep on an AudioSource when this missile closes within
-    /// <see cref="_alertRadius"/> metres of the player. Uses a procedural sine tone —
-    /// no audio asset required. Added by EnemyCylinderLauncher to each spawned missile.
-    ///
-    /// Beep interval shrinks from 0.3s (max range) to 0.08s (point-blank) so the
-    /// player can tell how close the missile is by sound alone.
-    /// </summary>
     public class MissileLockOn : MonoBehaviour
     {
         [SerializeField] private float _alertRadius  = 10f;

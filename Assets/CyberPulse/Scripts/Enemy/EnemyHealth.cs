@@ -5,7 +5,6 @@ using CyberPulse.Systems;
 
 namespace CyberPulse.Enemy
 {
-    /// <summary>Tracks enemy hit points, implements IDamageable, fires OnDeath when depleted.</summary>
     public class EnemyHealth : MonoBehaviour, IDamageable
     {
         [SerializeField] private int _maxHealth = 50;
@@ -23,13 +22,10 @@ namespace CyberPulse.Enemy
         public int CurrentHealth => _currentHealth;
         public int MaxHealth     => _maxHealth;
 
-        /// <summary>Fires once when health first reaches zero.</summary>
         public event Action OnDeath;
 
-        /// <summary>Fires each time damage is applied; parameter is the damage amount.</summary>
         public event Action<int> OnDamageTaken;
 
-        /// <summary>Fires on any enemy's death — ScoreManager subscribes to this.</summary>
         public static event Action OnAnyEnemyKilled;
 
         /// <summary>Override max health before Awake runs (call on inactive GO). Safe to call before SetActive(true).</summary>
@@ -45,8 +41,7 @@ namespace CyberPulse.Enemy
             TraceMeter.RegisterEnemy(this);
         }
 
-        /// <summary>Subtract amount from health. Fires OnDamageTaken, then OnDeath if health reaches zero.</summary>
-        public void TakeDamage(int amount)
+            public void TakeDamage(int amount)
         {
             if (_isDead) return;
 

@@ -3,11 +3,6 @@ using UnityEngine;
 
 namespace CyberPulse.Enemy
 {
-    /// <summary>
-    /// Spawns procedural shard cubes on enemy death, applies explosion force, then
-    /// fades them out over 2 seconds. Attach to the enemy root alongside EnemyHealth.
-    /// EnemyHealth calls Explode() when health reaches zero.
-    /// </summary>
     public class EnemyDeathShards : MonoBehaviour
     {
         [Header("Shards")]
@@ -23,7 +18,6 @@ namespace CyberPulse.Enemy
 
         [SerializeField] private Renderer _enemyRenderer;
 
-        /// <summary>Wire the visual renderer at runtime (for procedurally created enemies).</summary>
         public void SetRenderer(Renderer r) { _enemyRenderer = r; }
 
         public void Explode()

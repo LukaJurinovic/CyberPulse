@@ -4,12 +4,6 @@ namespace CyberPulse.Enemy
 {
     public enum EnemyVisualMode { Idle, Patrol, Chase, Attack, Charging, Dead }
 
-    /// <summary>
-    /// Drives the wireframe shader's _EdgeColor per behaviour state via
-    /// MaterialPropertyBlock (no material instances). Auto-wires to
-    /// EnemyController.OnStateChanged when present; specialized enemies
-    /// call SetMode() directly from their own state machines.
-    /// </summary>
     public class EnemyStateVisual : MonoBehaviour
     {
         [SerializeField] private MeshRenderer _renderer;

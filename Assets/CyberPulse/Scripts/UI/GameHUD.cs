@@ -6,10 +6,6 @@ using CyberPulse.World;
 
 namespace CyberPulse.UI
 {
-    /// <summary>
-    /// Immediate-mode HUD for playtesting. No Canvas required.
-    /// Shows: HP bar, TraceMeter bar, node progress, current phase, damage flash.
-    /// </summary>
     public class GameHUD : MonoBehaviour
     {
         [SerializeField] private PlayerStats  _playerStats;
@@ -75,9 +71,6 @@ namespace CyberPulse.UI
             _damageFlashAlpha = Mathf.Min(1f, _damageFlashAlpha + 0.45f);
         }
 
-        // The HUD is laid out against this virtual height and scaled uniformly to the
-        // real resolution, so it stays the same apparent size on a high-res built player
-        // as it is in a smaller editor Game view (lower value = larger HUD).
         private const float ReferenceHeight = 720f;
 
         private void OnGUI()

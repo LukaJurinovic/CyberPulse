@@ -4,20 +4,6 @@ using CyberPulse.World;
 
 namespace CyberPulse.Systems
 {
-    /// <summary>
-    /// Coordinates the vertical layered progression (plan Bucket B).
-    ///
-    /// Owns the ordered <see cref="ArenaLayer"/> stack (index 0 = ground, where the
-    /// player starts). The "active" layer is the one the player is fighting on.
-    ///
-    ///   • When the active layer reports cleared, its exit door is unlocked.
-    ///   • When the player walks through that door, the active layer advances and the
-    ///     door re-seals behind them so they can't fall back into a cleared area.
-    ///   • Clearing the top layer (no exit door) triggers the GameManager win.
-    ///
-    /// WaveDirector reads <see cref="ActiveLayer"/> each frame to spawn into the right
-    /// arena, so this manager only needs to drive layer state — not the waves directly.
-    /// </summary>
     public class LayerManager : MonoBehaviour
     {
         public static LayerManager Instance { get; private set; }

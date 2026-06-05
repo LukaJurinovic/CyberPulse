@@ -4,15 +4,6 @@ using CyberPulse.Weapons;
 
 namespace CyberPulse.Systems
 {
-    /// <summary>
-    /// Tracks the SYNC resource (0-100). Filled by on-beat actions; drained by
-    /// off-rhythm time and taking damage. WeaponHolder calls TrySpend() on right-click
-    /// to trigger weapon specials.
-    ///
-    /// SYNC values per event (plan.md §4C):
-    ///   On-beat shot  +8    On-beat kill  +25   On-beat dash  +5
-    ///   Off-rhythm drain  -1/s    Damage  -10
-    /// </summary>
     public class SyncGauge : MonoBehaviour
     {
         public static SyncGauge Instance { get; private set; }

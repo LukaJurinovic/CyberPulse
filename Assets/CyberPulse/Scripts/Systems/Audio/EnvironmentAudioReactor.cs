@@ -3,18 +3,6 @@ using UnityEngine;
 
 namespace CyberPulse.Systems
 {
-    /// <summary>
-    /// Drives emissive intensity on arena wall renderers based on AudioAnalyzer data.
-    ///
-    /// At Start(), creates a single shared runtime Material instance (copy of the wall mat)
-    /// and assigns it to all wall renderers. Then Update() calls SetColor directly on that
-    /// instance — more reliable than MaterialPropertyBlock with statically-batched objects.
-    ///
-    /// t = max(Amplitude * _ampMultiplier, BassAmplitude * _bassMultiplier)
-    /// Lerps _EmissionColor from _wallBaseEmit to _wallPeakEmit.
-    ///
-    /// Peak colour is HDR (values > 1) so Bloom can amplify it.
-    /// </summary>
     public class EnvironmentAudioReactor : MonoBehaviour
     {
         [Header("Audio")]

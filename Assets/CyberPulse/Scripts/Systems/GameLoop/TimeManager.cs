@@ -4,10 +4,6 @@ using UnityEngine.Rendering;
 
 namespace CyberPulse.Systems
 {
-    /// <summary>
-    /// Kill-cam and slow-motion system. EnterSlowMo/ExitSlowMo are called directly
-    /// by WeaponHolder (AltFire). Uses unscaled delta so transitions are real-time.
-    /// </summary>
     public class TimeManager : MonoBehaviour
     {
         public static TimeManager Instance { get; private set; }

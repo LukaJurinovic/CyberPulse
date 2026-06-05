@@ -4,14 +4,6 @@ using CyberPulse.Systems;
 
 namespace CyberPulse.World
 {
-    /// <summary>
-    /// Tracks all DataNodes in the scene. When every node is siphoned,
-    /// advances GameManager to the Purge phase so enemies begin spawning.
-    /// Nodes self-register via Register() from their Awake().
-    ///
-    /// Once ProceduralArenaGenerator publishes elevated anchors (Tower/Platform tops),
-    /// a fraction of nodes are relocated up there so vertical movement is rewarded.
-    /// </summary>
     public class DataNodeManager : MonoBehaviour
     {
         public static DataNodeManager Instance { get; private set; }
@@ -28,7 +20,6 @@ namespace CyberPulse.World
         public int TotalCount    => _nodes.Count;
         public int SiphonedCount => _siphonedCount;
 
-        /// <summary>0–1 fraction of nodes siphoned. Suitable for a progress bar.</summary>
         public float Progress => _nodes.Count > 0 ? (float)_siphonedCount / _nodes.Count : 0f;
 
         private void Awake()
@@ -84,10 +75,6 @@ namespace CyberPulse.World
                 GameManager.Instance?.SetPhase(GamePhase.Purge);
         }
 
-        /// <summary>
-        /// Move ~_elevatedFraction of nodes onto Tower/Platform tops. Each receiving
-        /// node lifts ~1m above the anchor so it floats clearly above the surface.
-        /// </summary>
         private void RelocateToElevated()
         {
             if (_relocated) return;
